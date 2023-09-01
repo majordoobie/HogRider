@@ -1,0 +1,44 @@
+version: "3.8"
+services:
+  apibot_db:
+    image: arm64v8/postgres
+    container_name: apibot_db
+    env_file:
+      - config/db.env
+    volumes:
+      - apibot_volume:/var/lib/postgresql/data/
+    ports:
+      - 5432:5432
+    networks:
+      - apibot_network
+    restart: always
+
+  apibot:
+    container_name: apibot
+    image: apibot:v1.0
+    depends_on:
+      - apibot_db
+    build:
+      context: .
+      dockerfile: apibot.dockerfile
+    env_file:
+      - config/db.env
+    volumes:
+      - .:/opt/code
+    networks:
+      - apibot_network
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+
+volumes:
+  apibot_volume:
+    external: true
+    name: apibot_volume
+
+networks:
+  apibot_network:
+    external: true
+    name: apibot_network
+

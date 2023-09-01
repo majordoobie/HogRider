@@ -37,8 +37,8 @@ setup_logging("nextcord.application_command")
 enviro = settings['enviro']
 
 initial_extensions = [
-                        "cogs.general",
-                        "cogs.welcome",
+                        # "cogs.general",
+                        # "cogs.welcome",
                         "cogs.admin",
                       ]
 
