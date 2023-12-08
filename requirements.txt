@@ -1,2 +1,6 @@
 asyncpg
 coc.py
+nextcord
+loguru
+pytz
+grapheme

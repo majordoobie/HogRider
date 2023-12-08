@@ -2,10 +2,13 @@ import argparse
 import asyncio
 import config
 import json
-from os import getenv
 
 import asyncpg
 import coc
+import nextcord
+
+from bot import ApiBot
+from config import Settings, BotMode
 
 
 def _bot_args() -> argparse.Namespace:
@@ -31,84 +34,74 @@ def _bot_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _get_settings() -> dict:
+def _get_settings() -> Settings:
     args = _bot_args()
 
     if args.live_mode:
-        return config.load_settings("live_mode")
+        return config.load_settings(BotMode.LIVE_MODE)
     else:
-        return config.load_settings("dev_mode")
+        return config.load_settings(BotMode.DEV_MODE)
 
 
-async def _get_pool(settings: dict) -> asyncpg.pool.Pool:
+async def _get_pool(settings: Settings) -> asyncpg.pool.Pool:
     try:
         async def init(con):
             """Create custom column type, json."""
             await con.set_type_codec("json", schema="pg_catalog",
                                      encoder=json.dumps, decoder=json.loads)
 
-        pool = await asyncpg.create_pool(settings["dsn"], init=init)
+        pool = await asyncpg.create_pool(settings.dsn, init=init)
         return pool
     except Exception as error:
         exit(f"PG error: {error}")
 
 
-async def _get_coc_client(settings: dict) -> coc.Client:
+async def _get_coc_client(settings: Settings) -> coc.Client:
     coc_client = coc.Client(key_names="APIBOT Keys")
     try:
-        await coc_client.login(settings["supercell"]["user"],
-                               settings["supercell"]["pass"])
+        await coc_client.login(settings.coc_email, settings.coc_password)
         return coc_client
 
     except coc.InvalidCredentials as err:
         exit(err)
 
 
-# def _get_bot_client(settings: Settings, coc_client: coc.EventsClient,
-#                     pool: asyncpg.Pool, troop_df: pd.DataFrame) -> BotClient:
-#     intents = disnake.Intents.default()
-#     intents.message_content = True
-#     intents.members = True
-#     intents.reactions = True
-#     intents.emojis = True
-#     intents.guilds = True
-#
-#     return BotClient(
-#         settings=settings,
-#         pool=pool,
-#         troop_df=troop_df,
-#         coc_client=coc_client,
-#         command_prefix=settings.bot_config["bot_prefix"],
-#         intents=intents,
-#         activity=disnake.Game(name=settings.bot_config.get("version")),
-#     )
-#
+def _get_bot_client(settings: Settings, coc_client: coc.Client,
+                    pool: asyncpg.Pool) -> ApiBot:
+    intents = nextcord.Intents.default()
+    intents.message_content = True
+    intents.members = True
+    intents.reactions = True
+    intents.emojis = True
+    intents.guilds = True
 
-async def main(settings: dict) -> None:
+    return ApiBot(
+        settings=settings,
+        coc_client=coc_client,
+        pool=pool,
+        intents=intents
+    )
+
+
+async def main(settings: Settings) -> None:
     print("Getting Pool")
     pool = await _get_pool(settings)
 
     print("Getting client")
     coc_client = await _get_coc_client(settings)
-    try:
-        player = await coc_client.get_player("8CCLPRUQ")
-        print(player.name)
-    except:
-        print("Player not found")
 
-    await coc_client.close()
-    await pool.close()
-    # # Run the runner function
-    # try:
-    #     await bot.start(settings.bot_config["bot_token"])
-    #
-    # except KeyboardInterrupt:
-    #     pass  # Ignore interrupts and go to clean up
-    #
-    # finally:
-    #     # Close both pool and client sessions
-    #     await pool.close()
-    #     await coc_client.close()
+    bot = _get_bot_client(settings, coc_client, pool)
+
+    try:
+        await bot.start(settings.bot_token)
+
+    except KeyboardInterrupt:
+        pass  # Ignore interrupts and go to clean up
+
+    finally:
+        # Close both pool and client sessions
+        await pool.close()
+        await coc_client.close()
 
 
 if __name__ == "__main__":
@@ -119,23 +112,3 @@ if __name__ == "__main__":
         pass
     finally:
         config.save_settings(_settings)
-
-    # # Refresh the sheets on disk
-    # clash_stats_levels.download_sheets()
-    # troop_df = clash_stats_levels.get_troop_df()
-    #
-    # # Get bot class
-    # print("Getting bot")
-    # bot = _get_bot_client(settings, coc_client, pool, troop_df)
-    #
-    # # Run the runner function
-    # try:
-    #     await bot.start(settings.bot_config["bot_token"])
-    #
-    # except KeyboardInterrupt:
-    #     pass  # Ignore interrupts and go to clean up
-    #
-    # finally:
-    #     # Close both pool and client sessions
-    #     await pool.close()
-    #     await coc_client.close()
