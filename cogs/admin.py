@@ -1,7 +1,6 @@
 import asyncio
 import copy
 
-import discord
 import nextcord
 import importlib
 import io

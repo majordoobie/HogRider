@@ -6,19 +6,8 @@ from nextcord.ext import commands, tasks
 from nextcord import ui, Interaction, Thread, ChannelType
 from datetime import datetime, timezone, timedelta
 from typing import List
-from config import settings
+from config import Settings, BotMode
 
-enviro = settings['enviro']
-
-if enviro == "LIVE":
-    WELCOME_CHANNEL_ID = settings['channels']['welcome']
-    GENERAL_CHANNEL_ID = settings['channels']['general']
-else:
-    WELCOME_CHANNEL_ID = 1011500429969993808
-    GENERAL_CHANNEL_ID = settings['channels']['testing']
-
-DEVELOPER_ROLE_ID = settings['roles']['developer']
-ADMIN_ROLE_ID = settings['roles']['admin']
 
 WELCOME_MESSAGE = ("**Welcome to the Clash API Developers server!**\nWe're glad to have you! "
                    "We're here to help you do the things you want to do with the Clash API. While we can "
@@ -117,13 +106,18 @@ class IntroduceModal(ui.Modal):
         return thread
 
     async def callback(self, interaction: Interaction):
-        if self.bot.pending_members[interaction.user.id]:
+        if self.bot.pending_members.get(interaction.user.id):
             return
         lang = self.language.value
         info = self.information.value
         created_thread = await self.create_welcome_thread(interaction, lang, info)
         self.bot.pending_members[interaction.user.id] = True
-        await created_thread.send(f"<@&{ADMIN_ROLE_ID}>", delete_after=5)
+
+        if self.bot.settings.mode == BotMode.DEV_MODE:
+            me = self.bot.get_user(265368254761926667)
+            await created_thread.send(me.mention, delete_after=5)
+        else:
+            await created_thread.send(f"<@&{self.bot.settings.get_role('admin')}>", delete_after=5)
         last_month = datetime.now().replace(tzinfo=timezone.utc) - timedelta(days=30)
         if interaction.user.created_at > last_month:
             msg = (f"{interaction.user.name}#{interaction.user.discriminator}, is less than one month old. "
@@ -131,8 +125,14 @@ class IntroduceModal(ui.Modal):
             await created_thread.send(msg)
         # Add temp_guest role so they can "look around"
         # Send DM so user knows we're working on it
-        temp_guest_role = interaction.guild.get_role(settings['roles']['temp_guest'])
-        await interaction.user.add_roles(temp_guest_role)
+        temp_guest_role = interaction.guild.get_role(self.bot.settings.get_role("temp_guest"))
+        print("The role is", temp_guest_role.name, temp_guest_role.id, temp_guest_role)
+
+        try:
+            await interaction.user.add_roles(temp_guest_role)
+        except Exception as error:
+            print(error)
+
         welcome_msg = ("Thank you for introducing yourself. One of our admins will review your information "
                        "shortly and get things moving. If they have any other questions, they will let you know! "
                        "In the meantime, we've given you access to a few channels.")
@@ -147,7 +147,7 @@ class SendButton(nextcord.ui.Button):
         self.author = author
 
     async def callback(self, interaction: Interaction):
-        channel = interaction.guild.get_channel(GENERAL_CHANNEL_ID)
+        channel = interaction.guild.get_channel(self.bot.get_channel("general"))
         self.view.msg = self.content
         await channel.send(f"{self.author} says:\n>>> {self.content}")
         self.view.stop()
@@ -174,20 +174,21 @@ class WelcomeButtonView(ui.View):
                style=nextcord.ButtonStyle.green,
                custom_id="thread_approve")
     async def thread_approve_button(self, button: nextcord.ui.Button, interaction: Interaction):
-        dev_role = interaction.guild.get_role(settings['roles']['developer'])
-        log_channel = interaction.guild.get_channel(settings['channels']['mod-log'])
+        dev_role = interaction.guild.get_role(self.bot.settings.get_role("developer"))
+        log_channel = interaction.guild.get_channel(self.bot.settings.get_channel("mod-log"))
         embed = nextcord.Embed(title=f"{self.member.name} Approved",
                                description=f"{interaction.user.name}#{interaction.user.discriminator} has approved new "
                                            f"member, {self.member.name}#{self.member.discriminator}",
                                color=0x00FFFF)
         # remove temp guest role
-        temp_guest_role = interaction.guild.get_role(settings['roles']['temp_guest'])
+        temp_guest_role = interaction.guild.get_role(self.bot.settings.get_role("temp_guest"))
         if temp_guest_role in self.member.roles:
             await self.member.remove_roles(temp_guest_role)
         # remove perms for welcome - this covers a case where they were individually
         # added with the More Info button
         await interaction.channel.parent.set_permissions(self.member, overwrite=None)
         await interaction.send(f"{interaction.user.display_name} has started the approval process.")
+
         sql = "SELECT role_id, role_name FROM bot_language_board ORDER BY role_name"
         fetch = await self.bot.pool.fetch(sql)
         roles = [(x['role_name'], x['role_id']) for x in fetch]
@@ -208,7 +209,7 @@ class WelcomeButtonView(ui.View):
                 await interaction.send(content, delete_after=21.0, view=role_view, ephemeral=False)
                 await role_view.wait()
                 embed.add_field(name="Roles:", value=", ".join(role_view.role_list), inline=False)
-            channel = interaction.guild.get_channel(GENERAL_CHANNEL_ID)
+            channel = interaction.guild.get_channel(self.bot.settings.get_channel("general"))
             await channel.send(f"{self.member.display_name} says:\n>>> {self.info}")
             embed.add_field(name="Message:", value=self.info, inline=False)
         else:
@@ -288,13 +289,13 @@ class WelcomeButtonView(ui.View):
             self.bot.logger.error(traceback.format_exc())
 
     async def interaction_check(self, interaction: Interaction) -> bool:
-        if not isinstance(interaction.channel, Thread) or interaction.channel.parent_id != WELCOME_CHANNEL_ID:
+        if not isinstance(interaction.channel, Thread) or interaction.channel.parent_id != self.bot.settings.get_channel("welcome"):
             self.bot.logger.info("Button failed on thread check")
             return False
         if interaction.channel.archived or interaction.channel.locked:
             self.bot.logger.info("Button failed on archive/locked")
             return False
-        if interaction.user.get_role(ADMIN_ROLE_ID):
+        if interaction.user.get_role(self.bot.settings.get_role("admin")):
             return True
         else:
             await interaction.send("Only admins may use these buttons.", ephemeral=True)
@@ -330,18 +331,18 @@ class IntroduceView(ui.View):
         self.add_item(IntroduceButton(self.bot))
 
     async def interaction_check(self, interaction: Interaction):
-        if interaction.user.get_role(DEVELOPER_ROLE_ID) is not None:
+        if interaction.user.get_role(self.bot.settings.get_role("developer")) is not None:
             await interaction.send("You already have the developer role.", ephemeral=True)
             return False
-        if self.bot.pending_members[interaction.user.id]:
-            await interaction.send("You've already introduced yourself. Please allow the admins time to "
-                                   "review and respond.", ephemeral=True)
-            return False
-        for thread in interaction.guild.threads:
-            if thread.name == f"Welcome {interaction.user.name}":
-                await interaction.send("You've already introduced yourself. Please allow the admins time to "
-                                       "review and respond.", ephemeral=True)
-                return False
+        # if self.bot.pending_members.get(interaction.user.id):
+        #     await interaction.send("You've already introduced yourself. Please allow the admins time to "
+        #                            "review and respond.", ephemeral=True)
+        #     return False
+        # for thread in interaction.guild.threads:
+        #     if thread.name == f"Welcome {interaction.user.name}":
+        #         await interaction.send("You've already introduced yourself. Please allow the admins time to "
+        #                                "review and respond.", ephemeral=True)
+        #         return False
         return True
 
 
@@ -359,7 +360,7 @@ class WelcomeCog(commands.Cog):
     @commands.has_role("Admin")
     async def recreate_welcome(self, ctx):
         """Command to re-add the welcome message and intro button"""
-        welcome_channel = self.bot.get_channel(WELCOME_CHANNEL_ID)
+        welcome_channel = self.bot.get_channel(self.bot.settings.get_channel("welcome"))
         await welcome_channel.purge()
         await welcome_channel.send(embed=nextcord.Embed(description=WELCOME_MESSAGE, color=nextcord.Color.green()))
         await welcome_channel.send(view=IntroduceView(self.bot))

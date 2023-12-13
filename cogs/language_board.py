@@ -5,16 +5,16 @@ import nextcord
 from nextcord.ext import commands
 from nextcord import RawReactionActionEvent, Emoji, Role, Embed, Message, Member, Guild
 
-from config import settings
+from config import Settings
 
 PANEL_DIRECTIONS = "Choose your language to receive your language role"
 IMAGE_PATH = Path("language_board_image.png")
-enviro = settings['enviro']
-JUNKIES_GUILD_ID = settings['guild']['junkies']
-if enviro == "LIVE":
-    GUILD_IDS = [JUNKIES_GUILD_ID, settings['guild']['bot_logs']]
-else:
-    GUILD_IDS = [settings['guild']['bot_logs']]
+# enviro = settings['enviro']
+# JUNKIES_GUILD_ID = settings['guild']['junkies']
+# if enviro == "LIVE":
+#     GUILD_IDS = [JUNKIES_GUILD_ID, settings['guild']['bot_logs']]
+# else:
+#     GUILD_IDS = [settings['guild']['bot_logs']]
 
 
 class LanguageBoard(commands.Cog):
@@ -304,7 +304,7 @@ class LanguageBoard(commands.Cog):
         # Save panel id to memory
         self.bot.stats_board_id = board.id
         self.bot.logger.info(f"Created board with ID: {board.id}")
-        await self.bot.pool.execute("UPDATE bot_smelly_mike SET board_id = $1", self.bot.stats_board_id)
+        await self.bot.pool.execute("UPDATE smelly_mike SET board_id = $1", self.bot.stats_board_id)
 
     @commands.group(
         aliases=["config"],
@@ -389,7 +389,7 @@ class LanguageBoard(commands.Cog):
             panel += f"`{row['role_name']:<15}` {row['emoji_repr']}\n"
         await ctx.send(panel)
 
-    @nextcord.slash_command(name="role_stats", description="Show role stats", guild_ids=GUILD_IDS)
+    @nextcord.slash_command(name="role_stats", description="Show role stats")
     async def role_stats(self, interaction: nextcord.Interaction):
         """Responds with a formatted code block containing the number of members with each role excluding those in
         the exclude list"""

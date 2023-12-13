@@ -4,3 +4,4 @@ nextcord
 loguru
 pytz
 grapheme
+emoji

@@ -9,6 +9,7 @@ import nextcord
 
 from bot import ApiBot
 from config import Settings, BotMode
+from config.db_scema import init_tables
 
 
 def _bot_args() -> argparse.Namespace:
@@ -51,6 +52,10 @@ async def _get_pool(settings: Settings) -> asyncpg.pool.Pool:
                                      encoder=json.dumps, decoder=json.loads)
 
         pool = await asyncpg.create_pool(settings.dsn, init=init)
+        async with pool.acquire() as con:
+            for table in init_tables():
+                await con.execute(table)
+
         return pool
     except Exception as error:
         exit(f"PG error: {error}")

@@ -1,7 +1,5 @@
-import asyncio
 import nextcord
 
-from config import settings
 from datetime import datetime, timezone, timedelta
 from nextcord.ext import commands, tasks
 from typing import List
@@ -79,18 +77,18 @@ class MembersCog(commands.Cog):
         """Prune inactive members (7 days) without roles"""
         self.bot.logger.info("Initiating prune loop")
         counter = 0
-        guild = self.bot.get_guild(settings['guild']['junkies'])
-        temps = guild.get_role(settings['roles']['temp_guest'])
+        guild = self.bot.get_guild(self.bot.settings.guild)
+        temps = guild.get_role(self.bot.get_role("temp_guest"))
         now = datetime.utcnow().replace(tzinfo=timezone.utc)
         try:
             # Prune anyone without a role and on server for more than 7 days.
             for member in guild.members:
                 if len(member.roles) == 1:
-                    if now - timedelta(days=7) > member.joined_at:
+                    if now - timedelta(days=2) > member.joined_at:
                         await member.kick(reason="Never introduced themselves")
                         counter += 1
                         continue
-                    if now - timedelta(days=5) > member.joined_at:
+                    if now - timedelta(days=1) > member.joined_at:
                         try:
                             await member.send(content=PRUNE_WARNING)
                         except nextcord.errors.Forbidden:
@@ -116,7 +114,7 @@ class MembersCog(commands.Cog):
 
         Doobie disclaimer: You can run this one. It won't delete anything."""
         from time import perf_counter
-        guild = self.bot.get_guild(settings['guild']['junkies'])
+        guild = self.bot.get_guild(self.bot.settings.guild)
         now = datetime.utcnow().replace(tzinfo=timezone.utc)
         start = perf_counter()
         for member in guild.members:
@@ -133,17 +131,17 @@ class MembersCog(commands.Cog):
             # only act if they are joining API server
             return
         if member.bot:
-            channel = self.bot.get_channel(settings['channels']['admin'])
+            channel = self.bot.get_channel(self.bot.settings.get_role("admin"))
             await channel.send(f"{member.mention} has just been invited to the server. "
                                f"Perhaps it is time to set up a demo channel?  Try `//setup {member.mention} @owner`")
         # add new member to pending_members as false (meaning no intro channel yet)
         self.bot.pending_members[member.id] = False
         last_month = datetime.now().replace(tzinfo=timezone.utc) - timedelta(days=30)
         if member.created_at > last_month:
-            channel = self.bot.get_channel(settings['channels']['admin'])
+            channel = self.bot.get_channel(self.bot.settings.get_role("admin"))
             msg = f"New member, {member.display_name}#{member.discriminator}, is less than one month old."
             await channel.send(msg)
-        mod_log = self.bot.get_channel(settings['channels']['mod-log'])
+        mod_log = self.bot.get_channel(self.bot.settings.get_channel("mod-log"))
         embed = nextcord.Embed(title="New member joined", color=0xBFFF00)
         embed.add_field(name="Member name:", value=f"{member.display_name}#{member.discriminator}", inline=True)
         embed.add_field(name="Creation Date:", value=member.created_at.strftime('%d %b %Y'), inline=True)
@@ -159,11 +157,11 @@ class MembersCog(commands.Cog):
         if old_member.roles == new_member.roles:
             # only act if roles have changed
             return
-        developer_role = new_member.guild.get_role(settings['roles']['developer'])
+        developer_role = new_member.guild.get_role(self.bot.settings.get_role("developer"))
         if developer_role not in old_member.roles and developer_role in new_member.roles:
             # only act if the Developer role is new
             if new_member.bot:
-                channel = self.bot.get_channel(settings['channels']['admin'])
+                channel = self.bot.get_channel(self.bot.settings.get_channel("admin"))
                 await channel.send(f"Who is the bonehead that assigned the Developer role to a bot? "
                                    f"{new_member.name} is a bot.")
             # At this point, it should be a member on our server that has just received the developers role
@@ -181,7 +179,7 @@ class MembersCog(commands.Cog):
                     if language_role[0] == role.id:
                         member_languages += f"{language_role[1]}\n"
                         member_role_emoji.append(language_role[2])
-            channel = new_member.guild.get_channel(settings['channels']['general'])
+            channel = new_member.guild.get_channel(self.bot.settings.get_channel("general"))
             embed = nextcord.Embed(color=nextcord.Color.blue(),
                                    description=f"Please welcome {new_member.display_name} to the Clash API Developers "
                                                f"server.")
@@ -200,7 +198,7 @@ class MembersCog(commands.Cog):
         if member.guild.id != 566451504332931073:
             # only act if they are joining API server
             return
-        mod_log = self.bot.get_channel(settings['channels']['mod-log'])
+        mod_log = self.bot.get_channel(self.bot.settings.get_channel("mod-log"))
         msg = f"{member.display_name}#{member.discriminator} just left the server."
         await mod_log.send(msg)
         # Check for welcome thread and delete
@@ -212,21 +210,21 @@ class MembersCog(commands.Cog):
         except KeyError:
             pass  # user wasn't in dict anyway
 
-    @nextcord.message_command(name="Developer", guild_ids=[settings['guild']['junkies']])
+    @nextcord.message_command(name="Developer", guild_ids=[566451504332931073])
     async def ctx_menu_developer(self, interaction: nextcord.Interaction, message: nextcord.Message):
         member = message.author
-        dev_role = interaction.guild.get_role(settings['roles']['developer'])
+        dev_role = interaction.guild.get_role(self.bot.settings.get_role("developer"))
         if dev_role in member.roles:
             return await interaction.send(f"{member.display_name} already has the Developer role. "
                                           f"This command can only be used for members without the "
                                           f"Developer role.",
                                           ephemeral=True)
-        if interaction.channel_id != settings['channels']['welcome']:
+        if interaction.channel_id != self.bot.settings.get_channel("welcome"):
             return await interaction.send(f"I'd feel a whole lot better if you ran this command in "
-                                          f"<#{settings['channels']['welcome']}>.",
+                                          f"<#{self.bot.settings.get_channel('welcome')}>.",
                                           ephemeral=True)
         await interaction.response.defer(ephemeral=True)
-        guest_role = interaction.guild.get_role(settings['roles']['vip_guest'])
+        guest_role = interaction.guild.get_role(self.bot.settings.get_role("guest"))
         if guest_role in member.roles:
             view = Confirm()
             await interaction.followup.send(f"{member.display_name} currently has the Guest role. Would you "
@@ -272,7 +270,7 @@ class MembersCog(commands.Cog):
         elif view.value:
             # copy message
             content = f"{message.author.display_name} says:\n>>> {message.content}"
-            general = self.bot.get_channel(settings['channels']['general'])
+            general = self.bot.get_channel(self.bot.settings.get_channel("general"))
             await general.send(content)
 
 
