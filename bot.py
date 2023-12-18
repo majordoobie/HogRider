@@ -1,6 +1,5 @@
 import asyncio
 import coc
-import nextcord
 import io
 import sys
 import traceback
@@ -119,34 +118,6 @@ class ApiBot(commands.Bot):
         except:
             pass
 
-    async def _initialize_db(self) -> None:
-        """Could be done better. Placing this code here to not mess with the rest
-        of the code base"""
-        self.logger.debug("Initializing LanguageBoard table")
-        language_table = """
-            CREATE TABLE IF NOT EXISTS bot_language_board(
-            role_id BIGINT PRIMARY KEY,
-            role_name TEXT,
-            emoji_id BIGINT,
-            emoji_repr TEXT     -- Discord print format
-        )"""
-
-        mike_smells = """
-            CREATE TABLE IF NOT EXISTS bot_smelly_mike (
-            board_id BIGINT PRIMARY KEY DEFAULT 0
-        )"""
-        try:
-            async with self.pool.acquire() as conn:
-                await conn.execute(language_table)
-                await conn.execute(mike_smells)
-                self.stats_board_id = await conn.fetchval(
-                    "SELECT board_id FROM bot_smelly_mike")
-                if not self.stats_board_id:
-                    await conn.execute(
-                        "INSERT INTO bot_smelly_mike (board_id) VALUES (0)")
-        except Exception:
-            self.logger.exception("Could not initialize LanguageBoard")
-
     async def on_ready(self):
         activity = nextcord.Activity(type=nextcord.ActivityType.watching,
                                      name="you write code")
@@ -155,5 +126,3 @@ class ApiBot(commands.Bot):
     async def after_ready(self):
         await self.wait_until_ready()
         logger.add(self.send_log, level=self.settings.bot_log_level)
-        if BotMode.LIVE_MODE == self.settings.mode:
-            await self._initialize_db()

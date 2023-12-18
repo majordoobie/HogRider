@@ -95,9 +95,11 @@ async def main(settings: Settings) -> None:
     print("Getting client")
     coc_client = await _get_coc_client(settings)
 
+    print("Getting Bot")
     bot = _get_bot_client(settings, coc_client, pool)
 
     try:
+        print("Starting...")
         await bot.start(settings.bot_token)
 
     except KeyboardInterrupt:
