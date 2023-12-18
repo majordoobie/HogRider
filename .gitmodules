@@ -1,0 +1,3 @@
+[submodule "HogRiderSecrets"]
+	path = HogRiderSecrets
+	url = git@github.com:majordoobie/HogRiderSecrets.git
