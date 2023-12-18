@@ -17,5 +17,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN echo 'alias ll="ls -lart --color=auto"' >> ~/.bashrc
 
 # Entry point of dev null used for debugging
-ENTRYPOINT ["tail", "-f", "/dev/null"]
-#CMD ["python", "main.py", "--live" ]
+#ENTRYPOINT ["tail", "-f", "/dev/null"]
+CMD ["python", "main.py", "--live" ]
