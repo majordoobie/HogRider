@@ -9,13 +9,6 @@ from config import Settings
 
 PANEL_DIRECTIONS = "Choose your language to receive your language role"
 IMAGE_PATH = Path("language_board_image.png")
-# enviro = settings['enviro']
-# JUNKIES_GUILD_ID = settings['guild']['junkies']
-# if enviro == "LIVE":
-#     GUILD_IDS = [JUNKIES_GUILD_ID, settings['guild']['bot_logs']]
-# else:
-#     GUILD_IDS = [settings['guild']['bot_logs']]
-
 
 class LanguageBoard(commands.Cog):
     def __init__(self, bot):
@@ -324,7 +317,7 @@ class LanguageBoard(commands.Cog):
         name="add_role",
         brief="",
         help="Add a role and emoji to the LanguageBoard table (admin only)",
-        usage="<role_id> <emoji>"
+        usage="<role_id> <emoji> <...role_alias...>"
     )
     @commands.has_role("Admin")
     async def config_add_role(self, ctx, *, arg_string=None):

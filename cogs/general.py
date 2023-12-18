@@ -7,29 +7,29 @@ import re
 import youtube_dl
 
 from cogs.utils import checks
-from config import settings
+from config import Settings
 from nextcord import Interaction, ui
 from nextcord.ext import commands, application_checks
 
-enviro = settings['enviro']
-
-JUNKIES_GUILD_ID = settings['guild']['junkies']
-if enviro == "LIVE":
-    GUILD_IDS = [JUNKIES_GUILD_ID, settings['guild']['bot_logs']]
-    WELCOME_CHANNEL_ID = settings['channels']['welcome']
-else:
-    GUILD_IDS = [settings['guild']['bot_logs']]
-    WELCOME_CHANNEL_ID = 1011500429969993808
-BOT_DEMO_CATEGORY_ID = settings['category']['bot_demo']
-RULES_CHANNEL_ID = settings['channels']['rules']
-PROJECTS_CHANNEL_ID = settings['channels']['projects']
-FAQS_CHANNEL_ID = 1036742156230070282
-RESOURCES_CATEGORY_ID = 823259072002392134
-HOG_RIDER_ROLE_ID = settings['roles']['hog_rider']
-BOTS_ROLE_ID = settings['roles']['bots']
-DEVELOPER_ROLE_ID = settings['roles']['developer']
-ADMIN_ROLE_ID = settings['roles']['admin']
-GUEST_ROLE_ID = settings['roles']['vip_guest']
+# enviro = settings['enviro']
+#
+# JUNKIES_GUILD_ID = settings['guild']['junkies']
+# if enviro == "LIVE":
+#     GUILD_IDS = [JUNKIES_GUILD_ID, settings['guild']['bot_logs']]
+#     WELCOME_CHANNEL_ID = settings['channels']['welcome']
+# else:
+#     GUILD_IDS = [settings['guild']['bot_logs']]
+#     WELCOME_CHANNEL_ID = 1011500429969993808
+# BOT_DEMO_CATEGORY_ID = settings['category']['bot_demo']
+# RULES_CHANNEL_ID = settings['channels']['rules']
+# PROJECTS_CHANNEL_ID = settings['channels']['projects']
+# FAQS_CHANNEL_ID = 1036742156230070282
+# RESOURCES_CATEGORY_ID = 823259072002392134
+# HOG_RIDER_ROLE_ID = settings['roles']['hog_rider']
+# BOTS_ROLE_ID = settings['roles']['bots']
+# DEVELOPER_ROLE_ID = settings['roles']['developer']
+# ADMIN_ROLE_ID = settings['roles']['admin']
+# GUEST_ROLE_ID = settings['roles']['vip_guest']
 
 SECTION_MATCH = re.compile(r'(?P<title>.+?)<a name="(?P<number>\d+|\d+.\d+)"></a>(?P<body>(.|\n)+?(?=(#{2,3}|\Z)))')
 UNDERLINE_MATCH = re.compile(r"<ins>|</ins>")
@@ -60,20 +60,21 @@ class General(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.channel.id == WELCOME_CHANNEL_ID and message.type is nextcord.MessageType.thread_created:
+        welcome_channel = self.bot.settings.get_channel("welcome")
+        if message.channel.id == welcome_channel and message.type is nextcord.MessageType.thread_created:
             await message.delete(delay=5)
 
-    @nextcord.slash_command(name="invite", guild_ids=GUILD_IDS)
+    @nextcord.slash_command(name="invite")
     async def invite(self, interaction: nextcord.Interaction):
         """Responds with the invite link to this server"""
         await interaction.response.send_message("https://discord.gg/clashapi")
 
-    @nextcord.slash_command(name="regex", guild_ids=GUILD_IDS)
+    @nextcord.slash_command(name="regex")
     async def regex(self, interaction: nextcord.Interaction):
         """Responds with the RegEx for player/clan tags"""
         await interaction.response.send_message("^#[PYLQGRJCUV0289]{3,9}$")
 
-    @nextcord.slash_command(name="rate_limit", guild_ids=GUILD_IDS)
+    @nextcord.slash_command(name="rate_limit")
     async def rate_limit(self, interaction: nextcord.Interaction):
         """Responds with the rate limit information for the Clash API"""
         print("preparing to respond")
@@ -81,7 +82,7 @@ class General(commands.Cog):
                                                 "second. Staying below this should be safe.")
         print("done responding")
 
-    @nextcord.slash_command(name="cache_max_age", guild_ids=GUILD_IDS)
+    @nextcord.slash_command(name="cache_max_age")
     async def refresh_interval(self, interaction: nextcord.Interaction):
         """Responds with the max age of the information for each endpoint in the ClashAPI"""
         embed = nextcord.Embed(title="Max age of information due to caching")
@@ -91,35 +92,35 @@ class General(commands.Cog):
         embed.add_field(name="Player", value="1 Minute", inline=False)
         await interaction.response.send_message(embed=embed)
 
-    @nextcord.slash_command(name="vps", guild_ids=GUILD_IDS)
+    @nextcord.slash_command(name="vps")
     async def vps(self, interaction: nextcord.Interaction):
         """Responds with a link to a GitHub MD on VPS options"""
         await interaction.response.send_message(
             "<https://github.com/wpmjones/apibot/blob/master/Rules/vps_services.md>")
 
-    @nextcord.slash_command(name="rules", guild_ids=GUILD_IDS)
+    @nextcord.slash_command(name="rules")
     async def rules(self, interaction: nextcord.Interaction):
         """Respond with a link to the rules markdown file."""
         await interaction.response.send_message("<https://github.com/wpmjones/apibot/blob/master/"
                                                 "Rules/code_of_conduct.md>")
 
-    @nextcord.slash_command(name="links", guild_ids=GUILD_IDS)
+    @nextcord.slash_command(name="links")
     async def link_api(self, interaction: nextcord.Interaction):
         """Responds with a link to a Discord message on the Discord Link API (by TubaKid)"""
         await interaction.response.send_message("https://discord.com/channels/566451504332931073/681617252814159904/"
                                                 "936126372873650237")
 
-    @nextcord.slash_command(name="coc_wrappers", guild_ids=GUILD_IDS)
+    @nextcord.slash_command(name="coc_wrappers")
     async def link_coc_wrappers(self, interaction: nextcord.Interaction):
         """Respond with a link to the page created by @Doluk"""
         await interaction.response.send_message("<https://coc-libs.vercel.app/>")
 
-    @nextcord.slash_command(name="discord_wrappers", guild_ids=GUILD_IDS)
+    @nextcord.slash_command(name="discord_wrappers")
     async def link_discord_wrappers(self, interaction: nextcord.Interaction):
         """Respond with a link to a list of known discord wrappers"""
         await interaction.response.send_message("<https://libs.advaith.io/>")
 
-    @nextcord.slash_command(name="player_url", guild_ids=GUILD_IDS)
+    @nextcord.slash_command(name="player_url")
     async def format_player_url(self, interaction: nextcord.Interaction,
                                 player_tag: str = ""):
         """Gives info on how to construct a player profile url and optionally the url for a specific player"""
@@ -136,7 +137,7 @@ class General(commands.Cog):
                      "```https://link.clashofclans.com/en?action=OpenPlayerProfile&tag=```")
         await interaction.response.send_message(response)
 
-    @nextcord.slash_command(name="help", description="Help command for slash commands", guild_ids=GUILD_IDS)
+    @nextcord.slash_command(name="help", description="Help command for slash commands")
     async def slash_help(self, interaction: nextcord.Interaction):
         embed = nextcord.Embed(title="Overview of Slash Commands",
                                color=0xFFFFFF)
@@ -224,12 +225,15 @@ class General(commands.Cog):
             return await ctx.send(f"{owner.mention} appears to be a bot, but should be the bot owner. Please try "
                                   f"again with `//setup @bot @owner`.")
 
-        category = self.bot.get_channel(BOT_DEMO_CATEGORY_ID)
-        guild = self.bot.get_guild(JUNKIES_GUILD_ID)
-        guest_role = guild.get_role(GUEST_ROLE_ID)
-        developer_role = guild.get_role(DEVELOPER_ROLE_ID)
-        hog_rider_role = guild.get_role(HOG_RIDER_ROLE_ID)
-        admin_role = guild.get_role(ADMIN_ROLE_ID)
+        get_channel_cb = self.bot.settings.get_channel
+        get_role_cb = self.bot.settings.get_role
+
+        category = self.bot.settings.bot_demo_category
+        guild = self.bot.get_guild(self.bot.settings.guild)
+        guest_role = guild.get_role(get_role_cb("guest"))
+        developer_role = guild.get_role(get_role_cb("developer"))
+        hog_rider_role = guild.get_role(get_role_cb("hog_rider"))
+        admin_role = guild.get_role(get_role_cb("admin"))
         channel_name = f"{bot.name}-demo"
         topic = f"Maintained by {owner.display_name}"
 
@@ -306,7 +310,7 @@ class General(commands.Cog):
                            f"allow this channel to become a testing platform.  Thanks!")
 
         # add the "Bots" role
-        await bot.add_roles(ctx.guild.get_role(BOTS_ROLE_ID),
+        await bot.add_roles(ctx.guild.get_role(get_role_cb("bots")),
                             reason=f"Added by setup command of Hog Rider ({ctx.author})",
                             )
 
@@ -431,7 +435,7 @@ class General(commands.Cog):
                                       f"This message will self-destruct in 120 seconds.",
                                       delete_after=120.0)
 
-    @nextcord.slash_command(name="doobie", guild_ids=GUILD_IDS)
+    @nextcord.slash_command(name="doobie")
     @application_checks.has_role("Admin")
     async def clear(self,
                     interaction: nextcord.Interaction,
@@ -486,7 +490,7 @@ class General(commands.Cog):
                 disable_all_buttons()
                 await interaction.channel.purge()
 
-    @nextcord.slash_command(name="youtube", guild_ids=GUILD_IDS)
+    @nextcord.slash_command(name="youtube")
     @application_checks.has_role("Admin")
     async def youtube(self,
                       interaction: nextcord.Interaction,
