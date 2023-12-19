@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import config
 import json
 
 import asyncpg
@@ -8,8 +7,7 @@ import coc
 import nextcord
 
 from bot import ApiBot
-from config import Settings, BotMode
-from config.db_scema import init_tables
+from config import Settings, BotMode, init_tables, load_settings
 
 
 def _bot_args() -> argparse.Namespace:
@@ -39,9 +37,9 @@ def _get_settings() -> Settings:
     args = _bot_args()
 
     if args.live_mode:
-        return config.load_settings(BotMode.LIVE_MODE)
+        return load_settings(BotMode.LIVE_MODE)
     else:
-        return config.load_settings(BotMode.DEV_MODE)
+        return load_settings(BotMode.DEV_MODE)
 
 
 async def _get_pool(settings: Settings) -> asyncpg.pool.Pool:
@@ -117,5 +115,3 @@ if __name__ == "__main__":
         asyncio.run(main(_settings))
     except KeyboardInterrupt:
         pass
-    finally:
-        config.save_settings(_settings)

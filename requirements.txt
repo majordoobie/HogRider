@@ -1,7 +1,3 @@
 asyncpg
+disnake
 coc.py
-nextcord
-loguru
-pytz
-grapheme
-emoji

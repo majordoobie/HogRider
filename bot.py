@@ -7,11 +7,10 @@ import traceback
 import asyncpg
 import nextcord
 
-from config import Settings, BotMode
+from config import Settings
 
 from cogs.utils import context
 from cogs.utils import embedded_help
-from coc.ext import discordlinks
 from datetime import datetime
 from nextcord.ext import commands
 from loguru import logger
