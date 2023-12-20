@@ -138,7 +138,7 @@ class MembersCog(commands.Cog):
         self.bot.pending_members[member.id] = False
         last_month = datetime.now().replace(tzinfo=timezone.utc) - timedelta(days=30)
         if member.created_at > last_month:
-            channel = self.bot.get_channel(self.bot.settings.get_role("admin"))
+            channel = self.bot.get_channel(self.bot.settings.get_channel("admin"))
             msg = f"New member, {member.display_name}#{member.discriminator}, is less than one month old."
             await channel.send(msg)
         mod_log = self.bot.get_channel(self.bot.settings.get_channel("mod-log"))

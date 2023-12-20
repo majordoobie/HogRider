@@ -1,23 +1,17 @@
 import asyncio
-import coc
 import io
 import sys
 import traceback
+from datetime import datetime
+import logging
 
+import coc
 import asyncpg
-import nextcord
+import disnake
+from disnake.ext import commands
 
 from config import Settings
-
 from cogs.utils import context
-from cogs.utils import embedded_help
-from datetime import datetime
-from nextcord.ext import commands
-from loguru import logger
-
-from fancy_logging import setup_logging
-
-setup_logging("discord.application_command")
 
 DESCRIPTION = (
     "Welcome to the Clash API Developers bot. This is a custom bot created by and for the users of the "
@@ -31,31 +25,30 @@ DESCRIPTION = (
 
 class ApiBot(commands.Bot):
     def __init__(self, settings: Settings, coc_client: coc.Client,
-                 pool: asyncpg.Pool, intents: nextcord.Intents):
+                 pool: asyncpg.Pool, intents: disnake.Intents):
         super().__init__(
             command_prefix=settings.bot_prefix,
             description=DESCRIPTION,
             case_insensitive=True,
-            intents=intents,
-            help_command=embedded_help.EmbeddedHelpCommand()
+            intents=intents
         )
         self.pool = pool
         self.settings = settings
         self.coc_client = coc_client
-        self.color = nextcord.Color.greyple()
-        self.logger = logger
+        self.color = disnake.Color.greyple()
         self.stats_board_id = None
+        self.log = logging.getLogger(f"{self.settings.log_name}.BotClient")
         self.pending_members = {}
-        self.loop.create_task(self.after_ready())
 
         for extension in self.settings.cogs_list:
             try:
                 self.load_extension(extension)
-                self.logger.debug(f"{extension} loaded successfully")
+                self.log.debug(f"{extension} loaded successfully...")
             except Exception as extension:
-                self.logger.error(f"Failed to load extension {extension}.",
-                                  file=sys.stderr)
-                traceback.print_exc()
+                self.log.error(f"Failed to load extension {extension}.",
+                               exc_info=True)
+
+        self.log.info("Bot is ready to go.")
 
     @property
     def log_channel(self):
@@ -65,7 +58,7 @@ class ApiBot(commands.Bot):
         if len(message) > 2000:
             fp = io.BytesIO(message.encode())
             return await self.log_channel.send(
-                file=nextcord.File(fp, filename='log_message.txt'))
+                file=disnake.File(fp, filename='log_message.txt'))
         else:
             return await self.log_channel.send(message)
 
@@ -92,7 +85,7 @@ class ApiBot(commands.Bot):
                 "Oops. This command is disabled and cannot be used.")
         elif isinstance(error, commands.CommandInvokeError):
             original = error.original
-            if not isinstance(original, nextcord.HTTPException):
+            if not isinstance(original, disnake.HTTPException):
                 self.logger.error(f"In {ctx.command.qualified_name}:",
                                   file=sys.stderr)
                 traceback.print_tb(original.__traceback__)
@@ -102,7 +95,7 @@ class ApiBot(commands.Bot):
             await ctx.send(error)
 
     async def on_error(self, event_method, *args, **kwargs):
-        e = nextcord.Embed(title="Discord Event Error", color=0xa32952)
+        e = disnake.Embed(title="disnake Event Error", color=0xa32952)
         e.add_field(name="Event", value=event_method)
         e.description = f"```py\n{traceback.format_exc()}\n```"
         e.timestamp = datetime.utcnow()
@@ -118,10 +111,6 @@ class ApiBot(commands.Bot):
             pass
 
     async def on_ready(self):
-        activity = nextcord.Activity(type=nextcord.ActivityType.watching,
-                                     name="you write code")
+        activity = disnake.Activity(type=disnake.ActivityType.watching,
+                                    name="you write code")
         await self.change_presence(activity=activity)
-
-    async def after_ready(self):
-        await self.wait_until_ready()
-        logger.add(self.send_log, level=self.settings.bot_log_level)

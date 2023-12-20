@@ -1,8 +1,8 @@
 import coc.utils
-import nextcord
+import discord
 import re
-from nextcord import Interaction, ui
-from nextcord.ext import commands, application_checks
+from discord import Interaction, ui
+from discord.ext import commands
 
 SECTION_MATCH = re.compile(
     r'(?P<title>.+?)<a name="(?P<number>\d+|\d+.\d+)"></a>(?P<body>(.|\n)+?(?=(#{2,3}|\Z)))')
@@ -11,7 +11,7 @@ URL_EXTRACTOR = re.compile(r"\[(?P<title>.*?)\]\((?P<url>[^)]+)\)")
 
 
 class ConfirmButton(ui.Button["ConfirmView"]):
-    def __init__(self, label: str, style: nextcord.ButtonStyle, *,
+    def __init__(self, label: str, style: discord.ButtonStyle, *,
                  custom_id: str):
         super().__init__(label=label, style=style, custom_id=custom_id)
 
@@ -24,9 +24,9 @@ class ConfirmView(ui.View):
     def __init__(self):
         super().__init__(timeout=10.0)
         self.value = None
-        self.add_item(ConfirmButton("Yes", nextcord.ButtonStyle.green,
+        self.add_item(ConfirmButton("Yes", discord.ButtonStyle.green,
                                     custom_id="confirm_button"))
-        self.add_item(ConfirmButton("No", nextcord.ButtonStyle.red,
+        self.add_item(ConfirmButton("No", discord.ButtonStyle.red,
                                     custom_id="decline_button"))
 
 
@@ -37,21 +37,21 @@ class General(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         welcome_channel = self.bot.settings.get_channel("welcome")
-        if message.channel.id == welcome_channel and message.type is nextcord.MessageType.thread_created:
+        if message.channel.id == welcome_channel and message.type is discord.MessageType.thread_created:
             await message.delete(delay=5)
 
-    @nextcord.slash_command(name="invite")
-    async def invite(self, interaction: nextcord.Interaction):
+    @discord.slash_command(name="invite")
+    async def invite(self, interaction: discord.Interaction):
         """Responds with the invite link to this server"""
         await interaction.response.send_message("https://discord.gg/clashapi")
 
-    @nextcord.slash_command(name="regex")
-    async def regex(self, interaction: nextcord.Interaction):
+    @discord.slash_command(name="regex")
+    async def regex(self, interaction: discord.Interaction):
         """Responds with the RegEx for player/clan tags"""
         await interaction.response.send_message("^#[PYLQGRJCUV0289]{3,9}$")
 
-    @nextcord.slash_command(name="rate_limit")
-    async def rate_limit(self, interaction: nextcord.Interaction):
+    @discord.slash_command(name="rate_limit")
+    async def rate_limit(self, interaction: discord.Interaction):
         """Responds with the rate limit information for the Clash API"""
         print("preparing to respond")
         await interaction.response.send_message(
@@ -59,10 +59,10 @@ class General(commands.Cog):
             "second. Staying below this should be safe.")
         print("done responding")
 
-    @nextcord.slash_command(name="cache_max_age")
-    async def refresh_interval(self, interaction: nextcord.Interaction):
+    @discord.slash_command(name="cache_max_age")
+    async def refresh_interval(self, interaction: discord.Interaction):
         """Responds with the max age of the information for each endpoint in the ClashAPI"""
-        embed = nextcord.Embed(title="Max age of information due to caching")
+        embed = discord.Embed(title="Max age of information due to caching")
         embed.add_field(name="Clans", value="2 Minutes", inline=False)
         embed.add_field(name="current war", value="2 Minutes", inline=False)
         embed.add_field(name="All other war related", value="10 Minutes",
@@ -70,39 +70,39 @@ class General(commands.Cog):
         embed.add_field(name="Player", value="1 Minute", inline=False)
         await interaction.response.send_message(embed=embed)
 
-    @nextcord.slash_command(name="vps")
-    async def vps(self, interaction: nextcord.Interaction):
+    @discord.slash_command(name="vps")
+    async def vps(self, interaction: discord.Interaction):
         """Responds with a link to a GitHub MD on VPS options"""
         await interaction.response.send_message(
             "<https://github.com/wpmjones/apibot/blob/master/Rules/vps_services.md>")
 
-    @nextcord.slash_command(name="rules")
-    async def rules(self, interaction: nextcord.Interaction):
+    @discord.slash_command(name="rules")
+    async def rules(self, interaction: discord.Interaction):
         """Respond with a link to the rules markdown file."""
         await interaction.response.send_message(
             "<https://github.com/wpmjones/apibot/blob/master/"
             "Rules/code_of_conduct.md>")
 
-    @nextcord.slash_command(name="links")
-    async def link_api(self, interaction: nextcord.Interaction):
+    @discord.slash_command(name="links")
+    async def link_api(self, interaction: discord.Interaction):
         """Responds with a link to a Discord message on the Discord Link API (by TubaKid)"""
         await interaction.response.send_message(
             "https://discord.com/channels/566451504332931073/681617252814159904/"
             "936126372873650237")
 
-    @nextcord.slash_command(name="coc_wrappers")
-    async def link_coc_wrappers(self, interaction: nextcord.Interaction):
+    @discord.slash_command(name="coc_wrappers")
+    async def link_coc_wrappers(self, interaction: discord.Interaction):
         """Respond with a link to the page created by @Doluk"""
         await interaction.response.send_message(
             "<https://coc-libs.vercel.app/>")
 
-    @nextcord.slash_command(name="discord_wrappers")
-    async def link_discord_wrappers(self, interaction: nextcord.Interaction):
+    @discord.slash_command(name="discord_wrappers")
+    async def link_discord_wrappers(self, interaction: discord.Interaction):
         """Respond with a link to a list of known discord wrappers"""
         await interaction.response.send_message("<https://libs.advaith.io/>")
 
-    @nextcord.slash_command(name="player_url")
-    async def format_player_url(self, interaction: nextcord.Interaction,
+    @discord.slash_command(name="player_url")
+    async def format_player_url(self, interaction: discord.Interaction,
                                 player_tag: str = ""):
         """Gives info on how to construct a player profile url and optionally the url for a specific player"""
         if player_tag:
@@ -119,20 +119,20 @@ class General(commands.Cog):
             "```https://link.clashofclans.com/en?action=OpenPlayerProfile&tag=```")
         await interaction.response.send_message(response)
 
-    @nextcord.slash_command(name="help",
+    @discord.slash_command(name="help",
                             description="Help command for slash commands")
-    async def slash_help(self, interaction: nextcord.Interaction):
-        embed = nextcord.Embed(title="Overview of Slash Commands",
+    async def slash_help(self, interaction: discord.Interaction):
+        embed = discord.Embed(title="Overview of Slash Commands",
                                color=0xFFFFFF)
         commands: list[
-            nextcord.BaseApplicationCommand] = self.bot.get_all_application_commands()
+            discord.BaseApplicationCommand] = self.bot.get_all_application_commands()
         global_outside_group = []
         guild_outside_group = []
         global_groups = []
         guild_groups = []
         for cmd in commands:
             # skip all non slash commands
-            if cmd.type != nextcord.ApplicationCommandType(1):
+            if cmd.type != discord.ApplicationCommandType(1):
                 continue
             # skip admin specific slash commands
             if cmd.qualified_name in ["doobie", "help"]:
@@ -162,25 +162,25 @@ class General(commands.Cog):
                      option['type'] <= 2],
                     key=lambda x: x)
                 if cmd.guild_ids:
-                    embed = nextcord.Embed(
+                    embed = discord.Embed(
                         title=f'Guild Commands of the {cmd.qualified_name} group [{len(sub_commands)}]',
                         description="\n".join(sub_commands),
                         color=0xDDDDDD
                     )
                     guild_groups.append(embed)
                 else:
-                    embed = nextcord.Embed(
+                    embed = discord.Embed(
                         title=f'Global Commands of the {cmd.qualified_name} group [{len(sub_commands)}]',
                         description="\n".join(sub_commands),
                         color=0xDDDDDD
                     )
                     global_groups.append(embed)
-        ungrouped_global = nextcord.Embed(
+        ungrouped_global = discord.Embed(
             title=f'Global Commands [{len(global_outside_group)}]',
             description="\n".join(
                 sorted(global_outside_group, key=lambda x: x)),
             color=0xFFFFFF)
-        ungrouped_guild = nextcord.Embed(
+        ungrouped_guild = discord.Embed(
             title=f'Guild Commands [{len(guild_outside_group)}]',
             description="\n".join(
                 sorted(guild_outside_group, key=lambda x: x)),
@@ -192,8 +192,8 @@ class General(commands.Cog):
 
     @commands.command(name="setup", aliases=["set_up", ], hidden=True)
     @commands.has_role("Admin")
-    async def setup_bot(self, ctx, bot: nextcord.Member = None,
-                        owner: nextcord.Member = None):
+    async def setup_bot(self, ctx, bot: discord.Member = None,
+                        owner: discord.Member = None):
         """Admin use only: For adding bot demo channels
         Creates channel (based on bot name)
         Alphabetizes channel within the Bot-Demos category
@@ -241,7 +241,7 @@ class General(commands.Cog):
 
         # No match found, just keep swimming
         overwrites = {
-            bot: nextcord.PermissionOverwrite(read_messages=True,
+            bot: discord.PermissionOverwrite(read_messages=True,
                                               send_messages=True,
                                               read_message_history=True,
                                               manage_messages=True,
@@ -249,7 +249,7 @@ class General(commands.Cog):
                                               attach_files=True,
                                               external_emojis=True,
                                               add_reactions=True),
-            admin_role: nextcord.PermissionOverwrite(read_messages=True,
+            admin_role: discord.PermissionOverwrite(read_messages=True,
                                                      send_messages=True,
                                                      read_message_history=True,
                                                      manage_messages=True,
@@ -260,7 +260,7 @@ class General(commands.Cog):
                                                      manage_channels=True,
                                                      manage_permissions=True,
                                                      manage_webhooks=True),
-            hog_rider_role: nextcord.PermissionOverwrite(read_messages=True,
+            hog_rider_role: discord.PermissionOverwrite(read_messages=True,
                                                          send_messages=True,
                                                          read_message_history=True,
                                                          manage_messages=True,
@@ -268,7 +268,7 @@ class General(commands.Cog):
                                                          attach_files=True,
                                                          external_emojis=True,
                                                          add_reactions=True),
-            developer_role: nextcord.PermissionOverwrite(read_messages=True,
+            developer_role: discord.PermissionOverwrite(read_messages=True,
                                                          send_messages=True,
                                                          read_message_history=True,
                                                          manage_messages=False,
@@ -276,7 +276,7 @@ class General(commands.Cog):
                                                          attach_files=True,
                                                          external_emojis=True,
                                                          add_reactions=True),
-            guest_role: nextcord.PermissionOverwrite(read_messages=True,
+            guest_role: discord.PermissionOverwrite(read_messages=True,
                                                      send_messages=True,
                                                      read_message_history=True,
                                                      manage_messages=False,
@@ -284,7 +284,7 @@ class General(commands.Cog):
                                                      attach_files=True,
                                                      external_emojis=False,
                                                      add_reactions=True),
-            guild.default_role: nextcord.PermissionOverwrite(
+            guild.default_role: discord.PermissionOverwrite(
                 read_messages=False),
         }
         try:
@@ -326,11 +326,10 @@ class General(commands.Cog):
             f"If {owner.display_name} would like bot monitoring, here's your command:\n"
             f"`//bot add {bot.id}`")
 
-    @nextcord.slash_command(name="doobie")
-    @application_checks.has_role("Admin")
+    @discord.slash_command(name="doobie")
     async def clear(self,
-                    interaction: nextcord.Interaction,
-                    msg_count: str = nextcord.SlashOption(
+                    interaction: discord.Interaction,
+                    msg_count: str = discord.SlashOption(
                         description="Message count OR Message ID",
                         required=False)):
         """Clears the specified number of messages OR all messages from the specified ID. (Admin only)
@@ -363,7 +362,7 @@ class General(commands.Cog):
                     await interaction.send(f"{msg_count} messages deleted.",
                                            delete_after=5,
                                            ephemeral=True)
-                except nextcord.errors.NotFound:
+                except discord.errors.NotFound:
                     return await interaction.send(
                         "It appears that you tried to enter a message ID, but I can't find "
                         "that message in this channel.")
@@ -418,10 +417,10 @@ class General(commands.Cog):
             if "." in match.group("number"):
                 colour = 0xBDDDF4  # lighter blue for sub-headings/groups
             else:
-                colour = nextcord.Colour.blue()
+                colour = discord.Colour.blue()
 
             embeds.append(
-                nextcord.Embed(title=title, description=description.strip(),
+                discord.Embed(title=title, description=description.strip(),
                                colour=colour))
             titles.append(title)
 
@@ -471,9 +470,9 @@ class General(commands.Cog):
                 title = raw_title.replace("#", "").strip()
                 url = ""
 
-            colour = nextcord.Colour.blue()
+            colour = discord.Colour.blue()
 
-            embeds.append(nextcord.Embed(title=title, url=url,
+            embeds.append(discord.Embed(title=title, url=url,
                                          description=description.strip(),
                                          colour=colour))
             titles.append(title)
