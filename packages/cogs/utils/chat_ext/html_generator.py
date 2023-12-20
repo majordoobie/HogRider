@@ -1,9 +1,10 @@
 import os
 
-from cogs.utils.chat_parse.mention import ParseMention
-from cogs.utils.chat_parse.markdown import ParseMarkdown
+from packages.cogs.utils.chat_parse.mention import ParseMention
+from packages.cogs.utils.chat_parse.markdown import ParseMarkdown
 
-dir_path = os.path.abspath(os.path.join((os.path.dirname(os.path.realpath(__file__))), ".."))
+dir_path = os.path.abspath(os.path.join((os.path.dirname(os.path.realpath(__file__))),
+                                        ".."))
 
 PARSE_MODE_NONE = 0
 PARSE_MODE_NO_MARKDOWN = 1

@@ -7,7 +7,7 @@ import asyncpg
 import coc
 import disnake
 
-from bot import ApiBot
+from bot import BotClient
 from config import Settings, BotMode, init_tables, load_settings
 from packages.utils.logging_setup import BotLogger
 
@@ -72,7 +72,7 @@ async def _get_coc_client(settings: Settings) -> coc.Client:
 
 
 def _get_bot_client(settings: Settings, coc_client: coc.Client,
-                    pool: asyncpg.Pool) -> ApiBot:
+                    pool: asyncpg.Pool) -> BotClient:
     intents = disnake.Intents.default()
     intents.message_content = True
     intents.members = True
@@ -80,7 +80,7 @@ def _get_bot_client(settings: Settings, coc_client: coc.Client,
     intents.emojis = True
     intents.guilds = True
 
-    return ApiBot(
+    return BotClient(
         settings=settings,
         coc_client=coc_client,
         pool=pool,

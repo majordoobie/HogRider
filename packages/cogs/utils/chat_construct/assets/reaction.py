@@ -1,7 +1,7 @@
 import re
 
-from cogs.utils.chat_ext.emoji_convert import convert_emoji
-from cogs.utils.chat_ext.html_generator import fill_out, emoji, custom_emoji, PARSE_MODE_NONE
+from packages.cogs.utils.chat_ext.emoji_convert import convert_emoji
+from packages.cogs.utils.chat_ext.html_generator import fill_out, emoji, custom_emoji, PARSE_MODE_NONE
 
 
 class Reaction:

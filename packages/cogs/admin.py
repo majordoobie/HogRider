@@ -5,6 +5,8 @@ from random import choice, randint
 
 from disnake.ext import commands
 
+from packages.utils import utils
+
 
 # TODO: Enable this feature once discord migration is up and running
 # from cogs.utils import chat_exporter
@@ -73,33 +75,89 @@ class Admin(commands.Cog):
             f"User: {usr} has been created with the following password:")
         await ctx.send(pwd)
 
-    @commands.command(hidden=True)
-    @commands.is_owner()
-    async def load(self, ctx, *, module):
-        """Loads a module. (owner only)"""
+    @commands.check(utils.is_owner)
+    @commands.slash_command(
+        name="kill",
+        auto_sync=True,
+        description="Kill the bot",
+        dm_permission=False)
+    async def _logout(self, ctx):
+        self.log.error('Closing connections...')
+        await self.bot.send(ctx, "Logging off")
         try:
-            await self.bot.load_extension(module)
-            self.log.debug(f"{module} loaded successfully")
-        except commands.ExtensionError as error:
-            await ctx.send(error)
-            self.log.error("Loading failure...", exc_info=True)
-        else:
-            await ctx.send("\N{OK HAND SIGN}")
-            self.log.info(f"Reloaded module {module}")
+            await self.bot.coc_client.close()
+        except Exception as error:
+            self.log.critical("Could not close coc connection", exc_info=True)
 
-    @commands.command(hidden=True)
-    @commands.is_owner()
-    async def unload(self, ctx, *, module):
-        """Unloads a module. (owner only)"""
         try:
-            await self.bot.unload_extension(module)
-            self.log.debug(f"{module} unloaded successfully")
-        except commands.ExtensionError as error:
-            await ctx.send(error)
-            self.log.error("Unloading failure...", exc_info=True)
-        else:
-            await ctx.send("\N{OK HAND SIGN}")
-            self.log.info(f"Unloaded module {module}")
+            await self.bot.pool.close()
+        except Exception as error:
+            self.log.critical("Could not close coc connection", exc_info=True)
+
+        try:
+            await self.bot.close()
+        except Exception as error:
+            self.log.critical("Could not close coc connection", exc_info=True)
+
+    @commands.check(utils.is_owner)
+    @commands.command(
+        aliases=['load'],
+        hidden=True
+    )
+    async def load_cog(self, ctx, cog: str):
+        cog = f'{self.bot.settings.cog_path}.{cog}'
+        try:
+            self.bot.load_extension(cog)
+        except Exception as e:
+            await ctx.send(
+                "```py\n{}: {}\n```".format(type(e).__name__, str(e)))
+            return
+        await ctx.send(f'Loaded {cog} successfully')
+
+    @commands.check(utils.is_owner)
+    @commands.command(
+        aliases=['unload'],
+        hidden=True
+    )
+    async def unload_cog(self, ctx, cog: str):
+        cog = f'{self.bot.settings.cog_path}.{cog}'
+        try:
+            self.bot.unload_extension(cog)
+        except Exception as e:
+            await ctx.send(
+                "```py\n{}: {}\n```".format(type(e).__name__, str(e)))
+            return
+        await ctx.send(f'Unloaded {cog} successfully')
+
+    @commands.check(utils.is_owner)
+    @commands.command(
+        hidden=True,
+        aliases=['r'],
+    )
+    async def re_load(self, ctx, cog: str):
+        cog = f'{self.bot.settings.cog_path}.{cog}'
+
+        try:
+            self.bot.reload_extension(cog)
+        except Exception as error:
+            exc = ''.join(
+                traceback.format_exception(type(error), error,
+                                           error.__traceback__,
+                                           chain=True))
+            await ctx.send(exc)
+            return
+        msg = f"""```python\nReloaded '{cog}' successfully```"""
+        await ctx.send(msg)
+
+    @commands.check(utils.is_owner)
+    @commands.command(
+        hidden=True
+    )
+    async def list_cogs(self, ctx):
+        output = ''
+        for i in self.bot.settings.enabled_cogs:
+            output += i.split('.')[-1] + '\n'
+        await ctx.send(output)
 
 
 def setup(bot):

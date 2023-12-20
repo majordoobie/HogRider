@@ -4,7 +4,7 @@ from typing import Optional
 import pytz
 import datetime
 
-from cogs.utils.chat_ext.discord_import import discord
+from packages.cogs.utils.chat_ext.discord_import import discord
 
 bot: Optional[discord.Client] = None
 

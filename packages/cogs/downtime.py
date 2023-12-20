@@ -2,7 +2,6 @@ import coc
 import nextcord
 import asyncio
 
-from cogs.utils.send_email import SendMail
 from datetime import datetime, timedelta
 from nextcord.ext import commands, tasks
 from config import settings

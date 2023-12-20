@@ -4,11 +4,11 @@ from typing import List, Optional
 from pytz import timezone
 from datetime import timedelta
 
-from cogs.utils.chat_ext.discord_import import discord
+from packages.cogs.utils.chat_ext.discord_import import discord
 
-from cogs.utils.chat_construct.assets import Attachment, Component, Embed, Reaction
-from cogs.utils.chat_ext.discord_utils import DiscordUtils
-from cogs.utils.chat_ext.html_generator import (
+from packages.cogs.utils.chat_construct.assets import Attachment, Component, Embed, Reaction
+from packages.cogs.utils.chat_ext.discord_utils import DiscordUtils
+from packages.cogs.utils.chat_ext.html_generator import (
     fill_out,
     bot_tag,
     message_body,
