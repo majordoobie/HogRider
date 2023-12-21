@@ -1,11 +1,18 @@
 import logging
 import string
+import re
 from random import choice, randint
 
+import disnake
 from disnake.ext import commands
 
 from packages.utils import utils
-from config import GUILD_IDS
+from config import guild_ids
+
+SECTION_MATCH = re.compile(
+    r'(?P<title>.+?)<a name="(?P<number>\d+|\d+.\d+)"></a>(?P<body>(.|\n)+?(?=(#{2,3}|\Z)))')
+UNDERLINE_MATCH = re.compile(r"<ins>|</ins>")
+URL_EXTRACTOR = re.compile(r"\[(?P<title>.*?)\]\((?P<url>[^)]+)\)")
 
 
 # TODO: Enable this feature once discord migration is up and running
@@ -59,7 +66,7 @@ class Admin(commands.Cog):
         await ctx.send(pwd)
 
     @commands.check(utils.is_owner)
-    @commands.slash_command(guild_ids=GUILD_IDS)
+    @commands.slash_command(guild_ids=guild_ids())
     async def logout(self, ctx):
         """
         Kill the bot. Only use this if the bot is doing something insane.
@@ -82,7 +89,7 @@ class Admin(commands.Cog):
             self.log.critical("Could not close coc connection", exc_info=True)
 
     @commands.check(utils.is_owner)
-    @commands.slash_command(guild_ids=GUILD_IDS)
+    @commands.slash_command(guild_ids=guild_ids())
     async def load_module(self, ctx, module: str):
         """
         Load a module into the running bot
@@ -105,7 +112,7 @@ class Admin(commands.Cog):
         self.log.debug(f"Loaded {cog} successfully")
 
     @commands.check(utils.is_owner)
-    @commands.slash_command(guild_ids=GUILD_IDS)
+    @commands.slash_command(guild_ids=guild_ids())
     async def unload_cog(self, ctx, module: str):
         """
         Unload a module from the running bot.
@@ -126,7 +133,7 @@ class Admin(commands.Cog):
         self.log.debug(f"Unloaded {cog} successfully")
 
     @commands.check(utils.is_owner)
-    @commands.slash_command(guild_ids=GUILD_IDS)
+    @commands.slash_command(guild_ids=guild_ids())
     async def reload(self, ctx, module: str):
         """
         Reload a module from the running bot
@@ -148,7 +155,7 @@ class Admin(commands.Cog):
         self.log.debug(f"Reloaded {cog} successfully")
 
     @commands.check(utils.is_admin)
-    @commands.slash_command(guild_ids=GUILD_IDS)
+    @commands.slash_command(guild_ids=guild_ids())
     async def list_cogs(self, ctx):
         """
         List the loaded modules
@@ -158,8 +165,67 @@ class Admin(commands.Cog):
             output += f"+ {i.split('.')[-1]}\n"
         await self.bot.send(ctx, output)
 
+    @commands.check(utils.is_admin)
+    @commands.slash_command(guild_ids=guild_ids())
+    async def recreate_rules(self,
+                             inter: disnake.ApplicationCommandInteraction):
+        """Recreate the #rules channel. (Admin only)
 
-    # class ConfirmButton(disnake.ui.Button["ConfirmView"]):
+
+        Note
+        -----
+        This parses the Rules/code_of_conduct.md markdown file, and sends it
+        as a series of embeds. Assumptions are made that each section is separated
+        by <a name="x.x"></a>.
+
+        Finally, buttons are sent with links which correspond to the various
+        messages.
+        """
+        await inter.response.defer()
+
+        channel = self.bot.get_channel(
+            self.bot.settings.get_channel("testing"))
+        await channel.purge()
+
+        with open("Rules/code_of_conduct.md", encoding="utf-8") as fp:
+            text = fp.read()
+
+        sections = SECTION_MATCH.finditer(text)
+
+        embeds = []
+        titles = []
+        for match in sections:
+            description = match.group("body")
+            # underlines, dividers, bullet points
+            description = UNDERLINE_MATCH.sub("__", description).replace("---",
+                                                                         "").replace(
+                "-", "\u2022")
+            title = match.group("title").replace("#", "").strip()
+
+            if "." in match.group("number"):
+                colour = 0xBDDDF4  # lighter blue for sub-headings/groups
+            else:
+                colour = disnake.Colour.blue()
+
+            embeds.append(
+                disnake.Embed(title=title, description=description.strip(),
+                              colour=colour))
+            titles.append(title)
+
+        messages = [await channel.send(embed=embed) for embed in embeds]
+
+        # create buttons
+        view = disnake.ui.View()
+        for i, (message, title) in enumerate(zip(messages, titles)):
+            view.add_item(
+                disnake.ui.Button(label=title.replace("#", "").strip(),
+                                  url=message.jump_url))
+
+        await channel.send(view=view)
+        await inter.edit_original_message(
+            f"Rules have been recreated. View here <#{channel.id}>")
+
+    # class ConfirmButton(disnake.ui.Button[]):
     #     def __init__(self, label: str, style: disnake.ButtonStyle, *,
     #                  custom_id: str):
     #         super().__init__(label=label, style=style, custom_id=custom_id)
@@ -373,54 +439,6 @@ class Admin(commands.Cog):
     #             disable_all_buttons()
     #             await interaction.channel.purge()
     #
-    # @commands.command(hidden=True)
-    # @commands.has_role("Admin")
-    # async def recreate_rules(self, ctx):
-    #     """Recreate the #rules channel. (Admin only)
-    #
-    #     This parses the Rules/code_of_conduct.md markdown file, and sends it as a series of embeds.
-    #     Assumptions are made that each section is separated by <a name="x.x"></a>.
-    #
-    #     Finally, buttons are sent with links which correspond to the various messages.
-    #     """
-    #     channel = self.bot.get_channel(self.bot.settings.get_channel("rules"))
-    #     await channel.purge()
-    #
-    #     with open("Rules/code_of_conduct.md", encoding="utf-8") as fp:
-    #         text = fp.read()
-    #
-    #     sections = SECTION_MATCH.finditer(text)
-    #
-    #     embeds = []
-    #     titles = []
-    #     for match in sections:
-    #         description = match.group("body")
-    #         # underlines, dividers, bullet points
-    #         description = UNDERLINE_MATCH.sub("__", description).replace("---",
-    #                                                                      "").replace(
-    #             "-", "\u2022")
-    #         title = match.group("title").replace("#", "").strip()
-    #
-    #         if "." in match.group("number"):
-    #             colour = 0xBDDDF4  # lighter blue for sub-headings/groups
-    #         else:
-    #             colour = discord.Colour.blue()
-    #
-    #         embeds.append(
-    #             discord.Embed(title=title, description=description.strip(),
-    #                            colour=colour))
-    #         titles.append(title)
-    #
-    #     messages = [await channel.send(embed=embed) for embed in embeds]
-    #
-    #     # create buttons
-    #     view = ui.View()
-    #     for i, (message, title) in enumerate(zip(messages, titles)):
-    #         view.add_item(ui.Button(label=title.replace("#", "").strip(),
-    #                                 url=message.jump_url))
-    #     await channel.send(view=view)
-    #     await ctx.send(
-    #         f"Rules have been recreated. View here <#{self.bot.settings.get_channel('rules')}>")
     #
     # @commands.command(hidden=True)
     # @commands.has_role("Admin")

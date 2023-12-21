@@ -13,8 +13,8 @@ email:
   password: hog_rider_email_password
 
 guild:
-  bot_logs: guild_id
-  junkies: guild_id
+  bot_logs: guild_ids
+  junkies: guild_ids
 
 category:
   bot_demo: category_id
