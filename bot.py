@@ -1,6 +1,5 @@
 import traceback
 import logging
-from enum import Enum
 
 import coc
 import asyncpg
@@ -9,6 +8,7 @@ from disnake.ext import commands
 from disnake import Forbidden
 
 from config import Settings
+from packages.utils.utils import EmbedColor
 
 DESCRIPTION = (
     "Welcome to the Clash API Developers bot. This is a custom bot created by and for the users of the "
@@ -18,12 +18,6 @@ DESCRIPTION = (
 
 # links_client = discordlinks.login(settings['links']['user'],
 #                                   settings['links']['pass'])
-
-class EmbedColor(Enum):
-    INFO = 0x000080  # blued
-    ERROR = 0xff0010  # red
-    SUCCESS = 0x00ff00  # green
-    WARNING = 0xff8000  # orange
 
 
 class BotClient(commands.Bot):
@@ -86,7 +80,7 @@ class BotClient(commands.Bot):
         if space < 9:
             space = 9  # Length of the 'Command: ' key
 
-        name = f"{inter.author.name}#{inter.author.discriminator}"
+        name = f"{inter.author.name}"
         msg = (
             f"{'User:':<{space}} {name}\n"
             f"{'Command:':<{space}} {inter.data.name}\n"
@@ -97,12 +91,12 @@ class BotClient(commands.Bot):
 
             if isinstance(data, disnake.Member):
                 data: disnake.Member
-                name = f"{data.name}#{data.discriminator}"
+                name = f"{data.name}"
                 msg += f"{option:<{space}} {name}\n"
             else:
                 msg += f"{option:<{space}} {data}\n"
 
-        self.log.warning(f"```{msg}```")
+        self.log.warning(f"{msg}")
 
     async def on_slash_command_error(
             self,
@@ -204,7 +198,7 @@ class BotClient(commands.Bot):
                 color=color.value
             ))
         if footnote:
-            embed_list[-1].set_footer(text=self.settings.bot_config['version'])
+            embed_list[-1].set_footer(text=self.settings.version)
         if author:
             embed_list[0].set_author(name=author[0], icon_url=author[1])
 

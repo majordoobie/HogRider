@@ -1,11 +1,11 @@
 import logging
 import string
-import traceback
 from random import choice, randint
 
 from disnake.ext import commands
 
 from packages.utils import utils
+from config import GUILD_IDS
 
 
 # TODO: Enable this feature once discord migration is up and running
@@ -13,30 +13,13 @@ from packages.utils import utils
 
 
 class Admin(commands.Cog):
+    GUILD_ID = 0
     """Admin-only commands that make the bot dynamic."""
 
     def __init__(self, bot):
         self.bot = bot
-        self._last_result = None
-        self.sessions = set()
         self.log = logging.getLogger(f"{self.bot.settings.log_name}.admin")
-
-    def cleanup_code(self, content):
-        """Automatically removes code blocks from the code."""
-        # remove ```py\n```
-        if content.startswith("```") and content.endswith("```"):
-            return "\n".join(content.split("\n")[1:-1])
-
-        # remove `foo`
-        return content.strip("` \n")
-
-    async def cog_check(self, ctx):
-        return await self.bot.is_owner(ctx.author)
-
-    def get_syntax_error(self, e):
-        if e.text is None:
-            return f"```py\n{e.__class__.__name__}: {e}\n```"
-        return f"```py\n{e.text}{'^':>{e.offset}}\n{e.__class__.__name__}: {e}```"
+        Admin.GUILD_ID = bot.settings.guild
 
     @commands.command(name="lg", hidden=True)
     async def links_get(self, ctx, tag):
@@ -76,12 +59,11 @@ class Admin(commands.Cog):
         await ctx.send(pwd)
 
     @commands.check(utils.is_owner)
-    @commands.slash_command(
-        name="kill",
-        auto_sync=True,
-        description="Kill the bot",
-        dm_permission=False)
-    async def _logout(self, ctx):
+    @commands.slash_command(guild_ids=GUILD_IDS)
+    async def logout(self, ctx):
+        """
+        Kill the bot. Only use this if the bot is doing something insane.
+        """
         self.log.error('Closing connections...')
         await self.bot.send(ctx, "Logging off")
         try:
@@ -100,64 +82,81 @@ class Admin(commands.Cog):
             self.log.critical("Could not close coc connection", exc_info=True)
 
     @commands.check(utils.is_owner)
-    @commands.command(
-        aliases=['load'],
-        hidden=True
-    )
-    async def load_cog(self, ctx, cog: str):
-        cog = f'{self.bot.settings.cog_path}.{cog}'
+    @commands.slash_command(guild_ids=GUILD_IDS)
+    async def load_module(self, ctx, module: str):
+        """
+        Load a module into the running bot
+
+        Parameters
+        ----------
+        module
+            The module to load.
+        """
+        print(module)
+        cog = f"{self.bot.settings.cog_path}.{module}"
+        print(cog)
         try:
             self.bot.load_extension(cog)
-        except Exception as e:
-            await ctx.send(
-                "```py\n{}: {}\n```".format(type(e).__name__, str(e)))
+        except Exception as error:
+            await ctx.send(error)
+            self.log.error("Module load error", exc_info=True)
             return
-        await ctx.send(f'Loaded {cog} successfully')
+        await ctx.send(f"Loaded {cog} successfully")
+        self.log.debug(f"Loaded {cog} successfully")
 
     @commands.check(utils.is_owner)
-    @commands.command(
-        aliases=['unload'],
-        hidden=True
-    )
-    async def unload_cog(self, ctx, cog: str):
-        cog = f'{self.bot.settings.cog_path}.{cog}'
+    @commands.slash_command(guild_ids=GUILD_IDS)
+    async def unload_cog(self, ctx, module: str):
+        """
+        Unload a module from the running bot.
+
+        Parameters
+        ----------
+        module
+            The module to unload
+        """
+        cog = f"{self.bot.settings.cog_path}.{module}"
         try:
             self.bot.unload_extension(cog)
-        except Exception as e:
-            await ctx.send(
-                "```py\n{}: {}\n```".format(type(e).__name__, str(e)))
+        except Exception as error:
+            await ctx.send(error)
+            self.log.error("Module unload error", exc_info=True)
             return
-        await ctx.send(f'Unloaded {cog} successfully')
+        await ctx.send(f"Unloaded {cog} successfully")
+        self.log.debug(f"Unloaded {cog} successfully")
 
     @commands.check(utils.is_owner)
-    @commands.command(
-        hidden=True,
-        aliases=['r'],
-    )
-    async def re_load(self, ctx, cog: str):
-        cog = f'{self.bot.settings.cog_path}.{cog}'
+    @commands.slash_command(guild_ids=GUILD_IDS)
+    async def re_load(self, ctx, module: str):
+        """
+        Reload a module from the running bot
+
+        Parameters
+        ----------
+        module
+            The module to reload
+        """
+        cog = f"{self.bot.settings.cog_path}.{module}"
 
         try:
             self.bot.reload_extension(cog)
         except Exception as error:
-            exc = ''.join(
-                traceback.format_exception(type(error), error,
-                                           error.__traceback__,
-                                           chain=True))
-            await ctx.send(exc)
+            await ctx.send(error)
+            self.log.error("Module reload error", exc_info=True)
             return
-        msg = f"""```python\nReloaded '{cog}' successfully```"""
-        await ctx.send(msg)
+        await ctx.send(f"Reloaded {cog} successfully")
+        self.log.debug(f"Reloaded {cog} successfully")
 
-    @commands.check(utils.is_owner)
-    @commands.command(
-        hidden=True
-    )
+    @commands.check(utils.is_admin)
+    @commands.slash_command(guild_ids=GUILD_IDS)
     async def list_cogs(self, ctx):
+        """
+        List the loaded modules
+        """
         output = ''
-        for i in self.bot.settings.enabled_cogs:
-            output += i.split('.')[-1] + '\n'
-        await ctx.send(output)
+        for i in self.bot.settings.cogs_list:
+            output += f"+ {i.split('.')[-1]}\n"
+        await self.bot.send(ctx, output)
 
 
 def setup(bot):
