@@ -4,7 +4,7 @@ services:
     image: arm64v8/postgres
     container_name: hogrider_db
     env_file:
-      - config/HogRiderSecrets/db.env
+      - packages/config/HogRiderSecrets/db.env
     volumes:
       - hogrider_volume:/var/lib/postgresql/data/
     ports:
@@ -22,7 +22,7 @@ services:
       context: .
       dockerfile: hogrider.dockerfile
     env_file:
-      - config/HogRiderSecrets/db.env
+      - packages/config/HogRiderSecrets/db.env
     volumes:
       - .:/opt/code
     networks:

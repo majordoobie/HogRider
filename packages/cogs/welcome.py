@@ -2,11 +2,11 @@ import traceback
 
 import nextcord
 
-from nextcord.ext import commands, tasks
+from nextcord.ext import commands
 from nextcord import ui, Interaction, Thread, ChannelType
 from datetime import datetime, timezone, timedelta
 from typing import List
-from config import Settings, BotMode
+from packages.config import BotMode
 
 
 WELCOME_MESSAGE = ("**Welcome to the Clash API Developers server!**\nWe're glad to have you! "

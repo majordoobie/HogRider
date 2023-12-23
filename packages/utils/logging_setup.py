@@ -5,7 +5,7 @@ from queue import Queue
 
 from disnake import SyncWebhook, Embed
 
-from config import Settings
+from packages.config import Settings
 
 
 class BotLogger:

@@ -8,7 +8,7 @@ import coc
 import disnake
 
 from bot import BotClient
-from config import Settings, BotMode, init_tables, load_settings
+from packages.config import Settings, BotMode, init_tables, load_settings
 from packages.utils.logging_setup import BotLogger
 
 

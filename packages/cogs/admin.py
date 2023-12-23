@@ -7,7 +7,7 @@ import disnake
 from disnake.ext import commands
 
 from packages.utils import utils
-from config import guild_ids
+from packages.config import guild_ids
 
 SECTION_MATCH = re.compile(
     r'(?P<title>.+?)<a name="(?P<number>\d+|\d+.\d+)"></a>(?P<body>(.|\n)+?(?=(#{2,3}|\Z)))')
@@ -20,13 +20,10 @@ URL_EXTRACTOR = re.compile(r"\[(?P<title>.*?)\]\((?P<url>[^)]+)\)")
 
 
 class Admin(commands.Cog):
-    GUILD_ID = 0
-    """Admin-only commands that make the bot dynamic."""
 
     def __init__(self, bot):
         self.bot = bot
         self.log = logging.getLogger(f"{self.bot.settings.log_name}.admin")
-        Admin.GUILD_ID = bot.settings.guild
 
     @commands.command(name="lg", hidden=True)
     async def links_get(self, ctx, tag):

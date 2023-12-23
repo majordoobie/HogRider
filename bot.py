@@ -7,7 +7,7 @@ import disnake
 from disnake.ext import commands
 from disnake import Forbidden
 
-from config import Settings
+from packages.config import Settings
 from packages.utils.utils import EmbedColor
 
 DESCRIPTION = (

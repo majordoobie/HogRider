@@ -3,7 +3,7 @@ import ssl
 
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from config import settings
+from packages.config import settings
 
 port = 465
 email = settings['email']['address']

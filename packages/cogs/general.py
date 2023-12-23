@@ -1,7 +1,7 @@
 import disnake
 from disnake.ext import commands
 
-from config import guild_ids
+from packages.config import guild_ids
 
 class General(commands.Cog):
     def __init__(self, bot):

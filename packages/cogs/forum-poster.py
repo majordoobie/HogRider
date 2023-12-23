@@ -3,7 +3,7 @@ import nextcord
 import re
 
 from bs4 import BeautifulSoup
-from config import settings
+from packages.config import settings
 from nextcord.ext import commands, tasks
 from nextcord.utils import find
 

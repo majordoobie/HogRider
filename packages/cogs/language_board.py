@@ -5,8 +5,6 @@ import nextcord
 from nextcord.ext import commands
 from nextcord import RawReactionActionEvent, Emoji, Role, Embed, Message, Member, Guild
 
-from config import Settings
-
 PANEL_DIRECTIONS = "Choose your language to receive your language role"
 IMAGE_PATH = Path("language_board_image.png")
 

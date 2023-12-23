@@ -4,7 +4,7 @@ import asyncio
 
 from datetime import datetime, timedelta
 from nextcord.ext import commands, tasks
-from config import settings
+from packages.config import settings
 
 enviro = settings['enviro']
 

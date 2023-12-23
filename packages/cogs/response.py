@@ -9,7 +9,6 @@ from datetime import datetime
 from nextcord import Interaction
 from nextcord.ext import commands, tasks
 from PIL import Image, ImageDraw, ImageFont
-from config import Settings
 
 
 class Response(commands.Cog):
