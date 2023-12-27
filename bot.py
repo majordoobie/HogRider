@@ -213,7 +213,7 @@ class BotClient(commands.Bot):
     async def inter_send(self,
                          inter: disnake.ApplicationCommandInteraction | disnake.MessageInteraction | None,
                          panel: str = "",
-                         panels: list[str] = [],
+                         panels: list[str] | None = None,
                          title: str = "",
                          color: EmbedColor = EmbedColor.INFO,
                          code_block: bool = False,
@@ -239,11 +239,15 @@ class BotClient(commands.Bot):
         :param panels: Optional list of panels to send
         """
         total_panels = []
+        input_panels = []
 
-        if panel:
-            panels.append(panel)
+        if panels:
+            for i in panels:
+                input_panels.append(i)
+        else:
+            input_panels.append(panel)
 
-        for panel in panels:
+        for panel in input_panels:
             for sub_panel in await self.text_splitter(panel, code_block):
                 total_panels.append(sub_panel)
 
