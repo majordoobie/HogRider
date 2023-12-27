@@ -241,7 +241,7 @@ class BotClient(commands.Bot):
         total_panels = []
 
         if panel:
-            total_panels.append(panel)
+            panels.append(panel)
 
         for panel in panels:
             for sub_panel in await self.text_splitter(panel, code_block):
@@ -305,7 +305,7 @@ class BotClient(commands.Bot):
                 await send_func(embeds=embeds)
 
     @staticmethod
-    async def text_splitter(text: str, code_block: bool) -> list[str]:
+    async def text_splitter(text: str, code_block: bool = False) -> list[str]:
         """Split text into blocks and return a list of blocks"""
         blocks = []
         block = ''
