@@ -22,6 +22,7 @@ class LanguageSelector(disnake.ui.View):
 
 class LanguageDropdown(disnake.ui.StringSelect):
     def __init__(self, bot: "BotClient", lang_records: list[Record]) -> None:
+        self.bot = bot
         options = []
         for lang in lang_records:
             options.append(disnake.SelectOption(
@@ -38,81 +39,49 @@ class LanguageDropdown(disnake.ui.StringSelect):
         )
 
     async def callback(self, inter: disnake.MessageInteraction):
+        roles = []
+        guild = self.bot.get_guild(self.bot.settings.guild)
+        for role_id in self.values:
+            roles.append(guild.get_role(role_id))
+
+        await inter.message.edit("Thank you!", view=None)
+
+        modal = IntroductionModal()
+        await inter.response.send_modal(modal)
+
+        print(modal.introduction)
+
+
+class IntroductionModal(disnake.ui.Modal):
+    def __init__(self):
+        self.introduction: str = ""
+        self.languages: str | None = None
+
+        components = [
+            disnake.ui.TextInput(
+                label="Intro",
+                placeholder="Tell us what you plan to do with the CoC API",
+                custom_id="Introduction",
+                style=disnake.TextInputStyle.paragraph,
+                min_length=15,
+                max_length=1024,
+                required=True
+            ),
+            disnake.ui.TextInput(
+                label="[Optional] Other Languages",
+                placeholder="Other languages we did not list",
+                custom_id="Languages",
+                style=disnake.TextInputStyle.short,
+                min_length=0,
+                max_length=128,
+                required=False
+            ),
+        ]
+        super().__init__(title="Introduction", components=components)
+
+    async def callback(self, inter: disnake.ModalInteraction) -> None:
         await inter.response.send_message(
-            f"Your favorite type of animal is: {self.values[0]}")
+            "Thank you. An admin will be with you shortly.")
 
-
-# class HappyDropdown(disnake.ui.Select):
-#     def __init__(self, bot: BotClient, emojis: List[str]):
-#         self.bot = bot
-#         self.emojis = emojis
-#
-#         options = []
-#         for emoji in emojis:
-#             options.append(disnake.SelectOption(
-#                 label=emoji,
-#                 emoji=EMOJIS[emoji]))
-#         super().__init__(
-#             placeholder="Choose a donation zone...",
-#             min_values=1,
-#             max_values=len(options),
-#             options=options,
-#         )
-#
-#     async def stop_panel(self,
-#                          message: disnake.Message,
-#                          record: asyncpg.Record,
-#                          ) -> None:
-#         """
-#         Stop a panel from running and remove the selection box
-#
-#         :param message: Message object to edit
-#         :param inter: Inter object to send to
-#         :param record: The record of the panel
-#         """
-#         record = dict(record)
-#         record["active"] = False
-#         await _refresh_panel(record, self.bot, message, kill=True)
-#         sql = "UPDATE happy SET active=$1 WHERE panel_name=$2"
-#         async with self.bot.pool.acquire() as con:
-#             await con.execute(sql, False, record['panel_name'])
-#
-#     async def callback(self, inter: disnake.MessageInteraction):
-#         async with self.bot.pool.acquire() as con:
-#             sql = "SELECT * FROM happy WHERE message_id=$1"
-#             record = await con.fetchrow(sql, inter.message.id)
-#
-#         if "Stop" in self.values or record["active"] == False:
-#             await self.stop_panel(inter.message, record)
-#             return
-#
-#         for opt in self.values:
-#             if record["data"][opt] is not None:
-#                 record["data"][opt] = None
-#             else:
-#                 record["data"][opt] = inter.user.display_name
-#
-#         # Update the panel and defer to complete the interaction
-#         await _refresh_panel(record, self.bot, inter.message)
-#         await inter.response.defer()
-#
-#         # Update the database
-#         async with self.bot.pool.acquire() as con:
-#             sql = "UPDATE happy SET data=$1 WHERE panel_name=$2"
-#             await con.execute(sql, record["data"], record["panel_name"])
-#
-#         # Automatically remove reactions when panel is full
-#         done = True
-#         for index, value in enumerate(record["data"].values()):
-#             if index >= record["panel_rows"]:
-#                 continue
-#             if value is None:
-#                 done = False
-#         if record["data"]["Top-off"] is None:
-#             done = False
-#         if record["data"]["Super Troop"] is None:
-#             done = False
-#
-#         # If done, remove reactions and set panel to false
-#         if done:
-#             await self.stop_panel(inter.message, record)
+        self.introduction = inter.text_values.get("Introduction")
+        self.languages = inter.text_values.get("Languages")

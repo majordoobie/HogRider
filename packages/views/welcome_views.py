@@ -45,6 +45,7 @@ class WelcomeView(BaseView):
                        custom_id="persistent_example:green")
     async def introduce(self, button: disnake.ui.Button,
                         inter: disnake.MessageInteraction):
+        await inter.response.defer()
         self.log.info(f"{inter.author} pressed the introduce button. "
                       f"Creating welcome thread.")
 
