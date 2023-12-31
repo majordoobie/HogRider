@@ -1,7 +1,7 @@
 import math
 
-from packages.cogs.utils.chat_ext.discord_utils import DiscordUtils
-from packages.cogs.utils.chat_ext.html_generator import (
+from packages.cogs.archive.chat_ext.discord_utils import DiscordUtils
+from packages.cogs.archive.chat_ext.html_generator import (
     fill_out,
     img_attachment,
     msg_attachment,

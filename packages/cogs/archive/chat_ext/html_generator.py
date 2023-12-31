@@ -1,7 +1,7 @@
 import os
 
-from packages.cogs.utils.chat_parse.mention import ParseMention
-from packages.cogs.utils.chat_parse.markdown import ParseMarkdown
+from packages.cogs.archive.chat_parse.mention import ParseMention
+from packages.cogs.archive.chat_parse.markdown import ParseMarkdown
 
 dir_path = os.path.abspath(os.path.join((os.path.dirname(os.path.realpath(__file__))),
                                         ".."))

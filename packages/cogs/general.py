@@ -3,8 +3,10 @@ from disnake.ext import commands
 
 from packages.config import guild_ids
 
+from bot import BotClient
+
 class General(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: BotClient):
         self.bot = bot
 
     @commands.Cog.listener()

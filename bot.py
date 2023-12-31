@@ -5,10 +5,12 @@ import coc
 import asyncpg
 import disnake
 from disnake.ext import commands
-from disnake import Forbidden
+from disnake import Forbidden, MessageInteraction
+from disnake.ui import Item
 
 from packages.config import Settings
 from packages.utils.utils import EmbedColor
+from packages.views.welcome_views import WelcomeView
 
 DESCRIPTION = (
     "Welcome to the Clash API Developers bot. This is a custom bot created by and for the users of the "
@@ -18,6 +20,11 @@ DESCRIPTION = (
 
 # links_client = discordlinks.login(settings['links']['user'],
 #                                   settings['links']['pass'])
+
+class ViewErr(disnake.ui.View):
+    async def on_error(self, error: Exception, item: Item,
+                       interaction: MessageInteraction) -> None:
+        print("Yeah we got it")
 
 
 class BotClient(commands.Bot):
@@ -43,7 +50,9 @@ class BotClient(commands.Bot):
         self.color = disnake.Color.greyple()
         self.stats_board_id = None
         self.log = logging.getLogger(f"{self.settings.log_name}.BotClient")
-        self.pending_members = {}
+
+        # Persistent view
+        self.welcome_view_init = False
 
         for extension in self.settings.cogs_list:
             try:
@@ -59,6 +68,11 @@ class BotClient(commands.Bot):
         activity = disnake.Activity(type=disnake.ActivityType.watching,
                                     name="you write code")
         await self.change_presence(activity=activity)
+
+        # Init the welcome view to activate the listener
+        if not self.welcome_view_init:
+            self.welcome_view_init = True
+            self.add_view(WelcomeView(self))
 
     async def on_resume(self):
         self.log.debug("Resuming connection...")
@@ -82,8 +96,9 @@ class BotClient(commands.Bot):
 
         name = f"{inter.author.name}"
         msg = (
-            f"{'User:':<{space}} {name}\n"
-            f"{'Command:':<{space}} {inter.data.name}\n"
+            f"**Command Log:**\n\n"
+            f"`{'User:':<{space}}` {name}\n"
+            f"`{'Command:':<{space}}` {inter.data.name}\n"
         )
 
         for option, data in inter.options.items():
@@ -92,11 +107,14 @@ class BotClient(commands.Bot):
             if isinstance(data, disnake.Member):
                 data: disnake.Member
                 name = f"{data.name}"
-                msg += f"{option:<{space}} {name}\n"
+                msg += f"`{option:<{space}}` {name}\n"
             else:
-                msg += f"{option:<{space}} {data}\n"
+                msg += f"`{option:<{space}}` {data}\n"
 
         self.log.warning(f"{msg}")
+
+    async def on_error(self, event, *args, **kwargs):
+        self.log.error(traceback.format_exc())
 
     async def on_slash_command_error(
             self,
@@ -110,6 +128,13 @@ class BotClient(commands.Bot):
         :param inter: disnake.ApplicationCommandInteraction
         :return:
         """
+        # Catch all
+        err_msg = "".join(
+            traceback.format_exception(type(error),
+                                       error,
+                                       error.__traceback__,
+                                       chain=True))
+
         # Catch all errors within command logic
         if isinstance(error, commands.CommandInvokeError):
             original = error.original
@@ -118,7 +143,7 @@ class BotClient(commands.Bot):
                 await self.inter_send(inter, panel=original.args[0],
                                       title="INVALID OPERATION",
                                       color=EmbedColor.ERROR)
-                self.log.error(original.args[0], exc_info=True)
+                self.log.error(f"{original.args[0]}\n\n```\n{err_msg}\n```")
                 return
 
             # Catch permission issues
@@ -129,7 +154,7 @@ class BotClient(commands.Bot):
                                             "role hierarchy of this bot.",
                                       title="FORBIDDEN",
                                       color=EmbedColor.ERROR)
-                self.log.error(original.args[0], exc_info=True)
+                self.log.error(f"{original.args[0]}\n\n```\n{err_msg}\n```")
                 return
 
             else:
@@ -140,7 +165,8 @@ class BotClient(commands.Bot):
                                       return_embed=True
                                       )
 
-                self.log.error("Error", exc_info=True)
+                self.log.error("Error: The bot likely failed to reply to "
+                               "the interaction", exc_info=True)
                 return
 
         # Catch command.Check errors
@@ -267,7 +293,7 @@ class BotClient(commands.Bot):
                     author_set = True
                     embed.set_author(
                         name=author.display_name,
-                        icon_url=author.avatar.url
+                        icon_url=author.avatar.url if author.avatar else None
                     )
 
             if index == last_index:

@@ -99,7 +99,7 @@ class DiscordWebhookHandler(logging.Handler):
             10: 0xCCFFFF,  # Debug Cyan | Automatic tasks will go here
             20: 0x0B5394,  # Info  Blue | Changes by automatic tasks go here
             30: 0xFFD966,  # Warning    | User ran a command
-            40: 0xFF8000,  # Error Org  | User caused an affect
+            40: 0xFF0010,  # Error Org  | User caused an affect
             50: 0xFF0000  # Critical   | All errors will go here
         }
         webhook = SyncWebhook.from_url(self.webhook_url)
@@ -113,8 +113,8 @@ class DiscordWebhookHandler(logging.Handler):
         embeds = []
         for msg in msgs:
             embeds.append(
-                Embed(title=f"{record.name}",
-                      description=f"```\n{msg}\n```",
+                Embed(title=f"{record.levelname} | {record.name}",
+                      description=f"{msg}",
                       color=colors[record.levelno]
                       )
             )

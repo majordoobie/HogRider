@@ -1,7 +1,7 @@
-from packages.cogs.utils.chat_ext.discord_import import discord
+from packages.cogs.archive.chat_ext.discord_import import discord
 
-from packages.cogs.utils.chat_ext.discord_utils import DiscordUtils
-from packages.cogs.utils.chat_ext.html_generator import (
+from packages.cogs.archive.chat_ext.discord_utils import DiscordUtils
+from packages.cogs.archive.chat_ext.html_generator import (
     fill_out,
     component_button,
     component_menu,

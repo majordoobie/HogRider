@@ -7,17 +7,17 @@ from disnake import RawMessageDeleteEvent
 from disnake.ext import commands
 
 from packages.utils.utils import EmbedColor
+from bot import BotClient
 
 
 class EventDriver(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: BotClient):
         self.bot = bot
         self.log = logging.getLogger(
             f"{self.bot.settings.log_name}.EventDriver")
         self.guild_id = self.bot.settings.guild
         self.get_channel_cb = self.bot.settings.get_channel
         self.get_role_cb = self.bot.settings.get_role
-        self.mod_log = self.bot.get_channel(self.get_channel_cb("mod-log"))
 
     def _is_valid(self,
                   guild_id: int | None = None,
@@ -54,22 +54,23 @@ class EventDriver(commands.Cog):
         self.log.debug(f"User {member} has joined")
 
         timelapse = datetime.now(timezone.utc) - member.created_at
-        years = timelapse.days / 365
+        years = timelapse.days // 365
         days = timelapse.days % 365
 
-        self.log.debug(f"Years value {years}")
+        mod_log = self.bot.get_channel(self.get_channel_cb("mod-log"))
+
         await self.bot.inter_send(
-            self.mod_log,
+            mod_log,
             title="New member has joined",
             panel=(f"`{'User:':<10}` {member.name}\n"
                    f"`{'Acc Date:':<10}` {member.created_at.strftime('%Y%m%d %H:%M')}\n"
-                   f"`{'Acc Age:':<10}` {years if years >= 1 else 0} years {days} days\n"
+                   f"`{'Acc Age:':<10}` {years if years > 0 else 0} years {days} days\n"
                    f"`{'Is Bot:':<10}` {member.bot}"),
             author=member,
             color=EmbedColor.SUCCESS
         )
 
-        channel = self.bot.get_channel(self.bot.settings.get_channel("admin"))
+        channel = self.bot.get_channel(self.get_channel_cb("admin"))
 
         # Brand-new account, flag it
         if years == 0 and days < 30 and not member.bot:
@@ -101,14 +102,16 @@ class EventDriver(commands.Cog):
         self.log.debug(f"Member {member} has left")
 
         timelapse = datetime.now(timezone.utc) - member.joined_at
-        years = timelapse.days / 365
+        years = timelapse.days // 365
         days = timelapse.days % 365
 
+        mod_log = self.bot.get_channel(self.get_channel_cb("mod-log"))
+
         await self.bot.inter_send(
-            self.mod_log,
+            mod_log,
             title="Member left",
             panel=f"`{'User:':<12}` {member.name}\n"
-                  f"`{'Member for':<12}` {years if years >= 1 else 0} years {days} days",
+                  f"`{'Member for':<12}` {years if years > 0 else 0} years {days} days",
             color=EmbedColor.ERROR,
             author=member
         )
@@ -153,7 +156,9 @@ class EventDriver(commands.Cog):
         if not before.content:
             return
 
-        self.log.debug(f"Message Edit Event: \n {before.content} \n\n {before}")
+        self.log.debug(f"**Message Edit Event:**\n\n"
+                       f"```\n{before.content}\n```\n\n"
+                       f"```\n{before}\n```")
 
         if not self._is_valid(guild_id=before.guild.id,
                               channel_id=before.channel.id,
@@ -161,8 +166,9 @@ class EventDriver(commands.Cog):
                               ):
             return
 
+        mod_log = self.bot.get_channel(self.get_channel_cb("mod-log"))
         await self.bot.inter_send(
-            self.mod_log,
+            mod_log,
             panel=(f"Message Link: {after.jump_url}\n\n"
                    f"**Before:**\n{before.content}\n\n"
                    f"**After:**\n{after.content}"),
@@ -176,11 +182,12 @@ class EventDriver(commands.Cog):
         """
         Display in the logs what message was deleted and by who.
         """
-        self.log.debug(f"Message Raw Event: \n\n {payload}")
-
         if not self._is_valid(guild_id=payload.guild_id,
                               channel_id=payload.channel_id):
             return
+
+        self.log.debug(f"**Message Delete Event:**\n\n"
+                       f"```\n{payload}\n```")
 
         # Populate with the data that is going to be sent
         send_payload = {}
@@ -190,12 +197,12 @@ class EventDriver(commands.Cog):
             # the bot (only latest 1000 messages)
             message = payload.cached_message
 
-            send_payload["panel"] = f"{message.content}\n\n{message.jump_url}"
-            send_payload[
-                "title"] = f"Message deleted in #{message.channel.name}"
-            send_payload[
-                "footer"] = f"ID: {message.id} | {message.created_at.strftime('%Y%d%m %H:%M:%S')}"
             send_payload["author"] = message.author
+            send_payload["title"] = (f"Message deleted in "
+                                     f"<#{message.channel.id}>")
+            send_payload["panel"] = f"{message.content}\n\n{message.jump_url}"
+            send_payload["footer"] = (f"ID: {message.id} | "
+                                      f"{message.created_at.strftime('%Y%d%m %H:%M:%S')}")
 
         else:
             # if not cached, see if the message is in the db
@@ -206,24 +213,25 @@ class EventDriver(commands.Cog):
                     payload.message_id)
 
             if record:
-                send_payload["panel"] = record.get("content", "")
-                send_payload[
-                    "title"] = f"Message deleted in #{self.bot.get_channel(record.get('channel_id'))}"
-                send_payload[
-                    "footer"] = f"ID: {record.get('message_id')} | {record.get('create_date')}"
                 send_payload["author"] = self.bot.get_user(
                     record.get('user_id'))
+                send_payload["title"] = (f"Message deleted in "
+                                         f"<#{record.get('channel_id')}>")
+                send_payload["panel"] = record.get("content", "")
+                send_payload["footer"] = (f"ID: {record.get('message_id')} | "
+                                          f"{record.get('create_date')}")
 
             else:
                 # otherwise we are shit out of luck
-                send_payload[
-                    "panel"] = "Message content was not saved into db or cached"
-                send_payload[
-                    "title"] = f"Message deleted in #{payload.message_id}"
+                send_payload["title"] = (f"Message deleted in "
+                                         f"<#{payload.channel_id}>")
+                send_payload["panel"] = ("Message content was not "
+                                         "saved into db or cached")
                 send_payload["footer"] = f"ID: {payload.message_id}"
 
+        mod_log = self.bot.get_channel(self.get_channel_cb("mod-log"))
         await self.bot.inter_send(
-            self.mod_log,
+            mod_log,
             panel=send_payload.get("panel"),
             title=send_payload.get("title"),
             footer=send_payload.get("footer"),

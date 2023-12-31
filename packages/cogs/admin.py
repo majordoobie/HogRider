@@ -8,6 +8,7 @@ from disnake.ext import commands
 
 from packages.utils import utils
 from packages.config import guild_ids
+from bot import BotClient
 
 SECTION_MATCH = re.compile(
     r'(?P<title>.+?)<a name="(?P<number>\d+|\d+.\d+)"></a>(?P<body>(.|\n)+?(?=(#{2,3}|\Z)))')
@@ -16,12 +17,12 @@ URL_EXTRACTOR = re.compile(r"\[(?P<title>.*?)\]\((?P<url>[^)]+)\)")
 
 
 # TODO: Enable this feature once discord migration is up and running
-# from cogs.utils import chat_exporter
+# from cogs.archive import chat_exporter
 
 
 class Admin(commands.Cog):
 
-    def __init__(self, bot):
+    def __init__(self, bot: BotClient):
         self.bot = bot
         self.log = logging.getLogger(f"{self.bot.settings.log_name}.admin")
 
