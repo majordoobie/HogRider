@@ -1,5 +1,6 @@
 from disnake.ext.commands import NotOwner
 from enum import Enum
+import disnake
 
 
 class EmbedColor(Enum):
@@ -45,3 +46,8 @@ def is_owner(ctx):
     else:
         raise NotOwner("Not owner")
 
+
+def to_title(inter: disnake.ApplicationCommandInteraction, panel_name: str
+             ) -> str:
+    """Function acts as a parameter function for  Happy.py"""
+    return panel_name.title()

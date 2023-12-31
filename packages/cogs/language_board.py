@@ -1,19 +1,27 @@
 from typing import Optional, Union
+from logging import getLogger
 from pathlib import Path
 
-import nextcord
-from nextcord.ext import commands
-from nextcord import RawReactionActionEvent, Emoji, Role, Embed, Message, Member, Guild
+import disnake
+from disnake.ext import commands
+
+from packages.config import guild_ids
+from packages.utils import utils
+from packages.utils.utils import EmbedColor
 
 PANEL_DIRECTIONS = "Choose your language to receive your language role"
 IMAGE_PATH = Path("language_board_image.png")
+
 
 class LanguageBoard(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.gap = "<:gap:823216162568405012>"
+        self.log = getLogger(f"{self.bot.settings.log_name}.admin")
 
-    async def _get_role_obj(self, ctx: Union[commands.Context, int], role_id: int) -> Optional[Role]:
+    async def _get_role_obj(self,
+                            ctx: Union[commands.Context, int],
+                            role_id: int) -> Optional[disnake.Role]:
         """Get role object, otherwise log and return None"""
         if isinstance(ctx, int):
             guild = self.bot.get_guild(ctx)
@@ -27,7 +35,9 @@ class LanguageBoard(commands.Cog):
                 print("Could not get role ", role_id)
                 return None
 
-    async def _get_emoji_obj(self, ctx: commands.Context, emoji_id: int) -> Optional[Emoji]:
+    async def _get_emoji_obj(self,
+                             ctx: commands.Context,
+                             emoji_id: int) -> Optional[disnake.Emoji]:
         """Get emoji object, otherwise log and return None. Docs recommend iteration instead
         of fetching"""
         for emoji in ctx.guild.emojis:
@@ -41,7 +51,8 @@ class LanguageBoard(commands.Cog):
         if string.isdigit():
             return int(string)
         else:
-            self.bot.logger.error(f"User input {string} could not be casted to integer")
+            self.bot.logger.error(
+                f"User input {string} could not be casted to integer")
             return None
 
     @staticmethod
@@ -53,11 +64,11 @@ class LanguageBoard(commands.Cog):
         return None
 
     @staticmethod
-    def _get_emoji_repr(emoji: Emoji) -> str:
+    def _get_emoji_repr(emoji: disnake.Emoji) -> str:
         """Cast emoji object to a discord acceptable print format"""
         return f"<:{emoji.name}:{emoji.id}>"
 
-    async def _get_role_stats(self, guild: Guild) -> dict:
+    async def _get_role_stats(self, guild: disnake.Guild) -> dict:
         """Counts how many users are in each role and returns a dictionary
 
         Parameters
@@ -95,7 +106,7 @@ class LanguageBoard(commands.Cog):
             "spacing": 0,
         }
         for member in guild.members:
-            member: nextcord.Member
+            member: disnake.Member
 
             # If user only has @everyone role, consider them as having no roles
             if len(member.roles) == 1:
@@ -131,12 +142,15 @@ class LanguageBoard(commands.Cog):
         #     role_stats['roles'].pop(role_stats['roles'].index(developer_role))
 
         # Sort and prep for iteration
-        role_stats['roles'].sort(key=lambda x: role_stats[x]['count'], reverse=True)
+        role_stats['roles'].sort(key=lambda x: role_stats[x]['count'],
+                                 reverse=True)
         role_stats['spacing'] += 2
 
         return role_stats
 
-    def _get_roles_panel(self, role_stats: dict, with_emojis=True) -> Union[str, Embed]:
+    def _get_roles_panel(self,
+                         role_stats: dict,
+                         with_emojis=True) -> Union[str, disnake.Embed]:
         """Create the panel that is used to display the roles stats
 
         Parameter
@@ -169,7 +183,7 @@ class LanguageBoard(commands.Cog):
                 emoji = role_stats.get(role)['emoji']
                 panel += f"{emoji} `{role_name:<{spacing}} {count}`\n"
                 panel += f"{emoji} `{role_name:<{spacing}} {count}`\n"
-            return Embed(
+            return disnake.Embed(
                 description=panel,
                 color=0x000080
             )
@@ -189,13 +203,14 @@ class LanguageBoard(commands.Cog):
             panel = f"```{panel}```"
             return panel
 
-    async def _get_message(self, message_id: int, channel_id: int, guild_id: int) -> Optional[Message]:
+    async def _get_message(self, message_id: int, channel_id: int,
+                           guild_id: int) -> Optional[disnake.Message]:
         """Get a message object"""
         guild, channel, message = None, None, None
         try:
             guild = self.bot.get_guild(guild_id)
             channel = guild.get_channel(channel_id)
-            message: Message
+            message: disnake.Message
             message = await channel.fetch_message(message_id)
         except Exception:
             msg = (
@@ -208,12 +223,15 @@ class LanguageBoard(commands.Cog):
                 f"Message obj: {message}\n\n"
             )
 
-            self.bot.logger.error(f"User input {msg} could not be casted to integer", exc_info=True)
+            self.bot.logger.error(
+                f"User input {msg} could not be casted to integer",
+                exc_info=True)
             return None
         return message
 
     @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
+    async def on_raw_reaction_add(self,
+                                  payload: disnake.RawReactionActionEvent):
 
         # Ignore the bot
         if payload.member.bot:
@@ -224,23 +242,26 @@ class LanguageBoard(commands.Cog):
             return
 
         # Reset the panel reaction
-        message = await self._get_message(payload.message_id, payload.channel_id, payload.guild_id)
+        message = await self._get_message(payload.message_id,
+                                          payload.channel_id, payload.guild_id)
         if message is None:
             return
         await message.remove_reaction(payload.emoji, payload.member)
 
         # confirm that the reaction is a registered reaction
         async with self.bot.pool.acquire() as conn:
-            reaction = await conn.fetch("SELECT role_id, role_name FROM bot_language_board WHERE emoji_id = $1",
-                                        payload.emoji.id)
+            reaction = await conn.fetch(
+                "SELECT role_id, role_name FROM bot_language_board WHERE emoji_id = $1",
+                payload.emoji.id)
             if len(reaction) == 1:
                 reaction = reaction[0]
             else:
-                self.bot.logger.error(f"Returned multiple database records with emoji id of {payload.emoji.id}")
+                self.bot.logger.error(
+                    f"Returned multiple database records with emoji id of {payload.emoji.id}")
         if not reaction:
             return
 
-        member: Member = payload.member
+        member: disnake.Member = payload.member
         member_roles = member.roles
         remove_role = False
 
@@ -257,34 +278,37 @@ class LanguageBoard(commands.Cog):
                     new_roles.append(role)
             try:
                 await member.edit(roles=new_roles)
-            except nextcord.Forbidden:
-                self.bot.logger.error(f"Could not add {reaction['role_name']} to {member.display_name}", exc_info=True)
+            except disnake.Forbidden:
+                self.bot.logger.error(
+                    f"Could not add {reaction['role_name']} to {member.display_name}",
+                    exc_info=True)
 
         # Otherwise add the role
         else:
-            role = await self._get_role_obj(payload.guild_id, reaction['role_id'])
+            role = await self._get_role_obj(payload.guild_id,
+                                            reaction['role_id'])
             try:
                 await member.add_roles(role)
-            except nextcord.Forbidden:
-                self.bot.logger.error(f"Could not add {reaction['role_name']} to {member.display_name}", exc_info=True)
+            except disnake.Forbidden:
+                self.bot.logger.error(
+                    f"Could not add {reaction['role_name']} to {member.display_name}",
+                    exc_info=True)
 
-    @commands.command(
-        name="language_board",
-        description=(
-                    "Create a reaction based panel that gives users roles when they click " 
-                    "on the emoji. The message ID is saved in memory, so if you reboot the "
-                    "bot, you will have to re-create the panels."
-                    )
-    )
-    @commands.has_role("Admin")
+    @commands.check(utils.is_admin)
+    @commands.slash_command(guild_ids=guild_ids())
     async def language_board(self, ctx):
+        """
+        Create a reaction based panel that gives users roles when they clik on
+        the emoji
+        """
         # Fetch all the emojis from the database
         async with self.bot.pool.acquire() as conn:
-            emojis = await conn.fetch("SELECT emoji_repr FROM bot_language_board")
+            emojis = await conn.fetch(
+                "SELECT emoji_repr FROM bot_language_board")
 
         # Save the board image to memory
         with IMAGE_PATH.open("rb") as f_handle:
-            board_image = nextcord.File(f_handle)
+            board_image = disnake.File(f_handle)
 
         board = await ctx.send(file=board_image)
 
@@ -295,100 +319,147 @@ class LanguageBoard(commands.Cog):
         # Save panel id to memory
         self.bot.stats_board_id = board.id
         self.bot.logger.info(f"Created board with ID: {board.id}")
-        await self.bot.pool.execute("UPDATE smelly_mike SET board_id = $1", self.bot.stats_board_id)
+        await self.bot.pool.execute("UPDATE smelly_mike SET board_id = $1",
+                                    self.bot.stats_board_id)
 
-    @commands.group(
-        aliases=["config"],
-        name="configure",
-        invoke_without_command=True,
-        brief="",
-        description="Add or remove role that get used in the Language Board.",
-        usage="",
-        help=""
-    )
-    @commands.has_role("Admin")
-    async def configure(self, ctx, *, arg_string=None):
-        """Run help on me to get the configuration sub commands (admin only)"""
-        await ctx.send("Run help on me to get the configuration sub commands")
+    @commands.check(utils.is_admin)
+    @commands.slash_command(guild_ids=guild_ids())
+    async def lang(self, inter: disnake.ApplicationCommandInteraction):
+        pass
 
-    @configure.command(
-        name="add_role",
-        brief="",
-        help="Add a role and emoji to the LanguageBoard table (admin only)",
-        usage="<role_id> <emoji> <...role_alias...>"
-    )
-    @commands.has_role("Admin")
-    async def config_add_role(self, ctx, *, arg_string=None):
-        """Add a role and emoji to the Language Board table (admin only)"""
-        try:
-            role_id, emoji_id = arg_string.split(' ')[:2]
-        except ValueError as error:
-            self.bot.logger.exception("Expected two arguments.")
-            return await ctx.send(f"Expected two arguments: `role_id` and `emoji_id` got {arg_string} instead.")
+    @commands.check(utils.is_admin)
+    @lang.sub_command(guild_ids=guild_ids())
+    async def add_role(
+            self,
+            inter: disnake.ApplicationCommandInteraction,
+            role: disnake.Role,
+            emoji: disnake.Emoji,
+            language: str = commands.Param(converter=utils.to_title),
+    ) -> None:
+        """
+        Register a language and the emoji associated with it
 
-        role_id = self._get_int_from_string(role_id)
-        emoji_id = self._get_emoji_from_string(emoji_id)
-        if role_id is None or emoji_id is None:
-            return await ctx.send(f"Expected arguments should be integers only.")
-
-        role_obj = await self._get_role_obj(ctx, role_id)
-        emoji_obj = await self._get_emoji_obj(ctx, emoji_id)
-        if role_obj is None or emoji_obj is None:
-            return await ctx.send(f"Expected arguments could not be used to retrieve either the emoji or role object.")
-
+        Parameters
+        ----------
+        role: The role to register
+        emoji: The emoji that represents the role.
+        language: Name of the language. Avoid abbreviations.
+        """
         async with self.bot.pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT role_id FROM bot_language_board WHERE role_id = $1", role_obj.id)
+                "SELECT role_id FROM bot_language_board WHERE role_id = $1",
+                role.id)
             if row:
-                return await ctx.send(f"Role is already registered. Please list roles and/or "
-                                      f"remove if you want to change.")
+                await self.bot.inter_send(
+                    inter,
+                    panel=(
+                        f"Role is already registered. Please list roles and/or "
+                        f"remove if you want to change."),
+                    color=EmbedColor.ERROR
+                )
+
+                return
+
             sql = "INSERT INTO bot_language_board (role_id, role_name, emoji_id, emoji_repr) VALUES ($1, $2, $3, $4)"
-            await conn.execute(sql, role_obj.id, role_obj.name, emoji_obj.id, self._get_emoji_repr(emoji_obj))
-            await ctx.send("Role added")
+            await conn.execute(sql, role.id, role.name, emoji.id,
+                               self._get_emoji_repr(emoji))
 
-    @configure.command(
-        name="remove_role",
-        brief="",
-        help=("Remove a registered role. This is the only way to \"Edit\" a registration record. User \"list_roles\" "
-              "to get a listing. (admin only)"),
-        usage="<role_name>"
-    )
-    @commands.has_role("Admin")
-    async def configure_remove_role(self, ctx, *, role_name=None):
-        """Remove a registered role (admin only)"""
+            self.log.info(
+                f"Registered language {language} with "
+                f"<{role.name}:{role.id}> : {emoji}")
+            await self.bot.inter_send(inter, "Role added",
+                                      color=EmbedColor.SUCCESS)
+
+    @commands.check(utils.is_admin)
+    @lang.sub_command(guild_ids=guild_ids())
+    async def remove_role(
+            self,
+            inter: disnake.ApplicationCommandInteraction,
+            language: str = commands.Param(converter=utils.to_title),
+    ) -> None:
+        """
+        Remove registered languages. This is the only way to edit them
+
+        Parameters
+        ----------
+        language: The language to remove
+        """
         async with self.bot.pool.acquire() as conn:
-            record = await conn.fetchrow("SELECT role_id FROM bot_language_board WHERE role_name = $1", role_name)
+            record = await conn.fetchrow(
+                "SELECT role_id FROM bot_language_board WHERE role_name = $1",
+                language)
+
             if record:
-                await conn.execute("DELETE FROM bot_language_board WHERE role_id = $1", record['role_id'])
-                return await ctx.send("Role removed")
-        if not record:
-            await ctx.send(f"Could not find role name {role_name}. Please use `list_roles` to get a listing.")
+                await conn.execute(
+                    "DELETE FROM bot_language_board WHERE role_id = $1",
+                    record['role_id'])
 
-    @configure.command(
-        name="list_roles",
-        brief="",
-        help="List the roles registered and the emojis that they correspond to. (admin only)",
-        usage=""
-    )
-    @commands.has_role("Admin")
-    async def configure_list_roles(self, ctx):
-        """List the roles registered and the corresponding emojis (admin only)"""
+                await self.bot.inter_send(
+                    inter,
+                    panel=f"Language {language} has been removed",
+                    color=EmbedColor.SUCCESS
+                )
+
+        if not record:
+            await self.bot.inter_send(
+                inter,
+                panel=f"Unable to remove {language}",
+                color=EmbedColor.ERROR
+            )
+
+    @commands.check(utils.is_admin)
+    @lang.sub_command(guild_ids=guild_ids())
+    async def list_role(
+            self,
+            inter: disnake.ApplicationCommandInteraction,
+    ) -> None:
+        """
+        List the registered languages
+        """
         async with self.bot.pool.acquire() as conn:
-            rows = await conn.fetch("SELECT role_name, emoji_repr FROM bot_language_board;")
+            rows = await conn.fetch(
+                "SELECT role_name, emoji_repr FROM bot_language_board;")
         panel = f"{'Role':<30} {'Emoji'}\n"
         for row in rows:
             panel += f"`{row['role_name']:<15}` {row['emoji_repr']}\n"
-        await ctx.send(panel)
 
-    @nextcord.slash_command(name="role_stats", description="Show role stats")
-    async def role_stats(self, interaction: nextcord.Interaction):
-        """Responds with a formatted code block containing the number of members with each role excluding those in
-        the exclude list"""
-        role_stats = await self._get_role_stats(interaction.guild)
+        await self.bot.inter_send(inter, panel=panel)
+
+    @commands.slash_command(guild_ids=guild_ids())
+    async def role_stats(self,
+                         inter: disnake.ApplicationCommandInteraction):
+        """
+        List how many users have each language role
+        """
+
+        role_stats = await self._get_role_stats(inter.guild)
         panel = self._get_roles_panel(role_stats, with_emojis=False)
-        await interaction.response.send_message(embed=nextcord.Embed(title="Role stats",
-                                                                     description=panel,
-                                                                     color=nextcord.Color.green()))
+        await self.bot.inter_send(
+            inter,
+            title="Role Stats",
+            panel=panel
+        )
+
+    @remove_role.autocomplete("language")
+    async def language_name_autocmp(
+            self,
+            inter: Optional[disnake.ApplicationCommandInteraction],
+            user_input: str) -> list[str]:
+        """
+        Autocomplete callback. To add this callback to a function add the
+        decorator for the function.
+
+        :param inter: Interaction
+        :param user_input: The current input of the user
+        :return: List of possible options based on the user input
+        """
+
+        async with self.bot.pool.acquire() as conn:
+            sql = "SELECT role_name FROM bot_language_board"
+            rows = await conn.fetch(sql)
+
+        return [lang["role_name"] for lang in rows if
+                user_input.title() in lang["role_name"]]
 
 
 def setup(bot):

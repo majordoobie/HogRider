@@ -15,6 +15,7 @@ class General(commands.Cog):
         if message.channel.id == welcome_channel and message.type is disnake.MessageType.thread_created:
             await message.delete(delay=5)
 
+
     @commands.slash_command(guild_ids=guild_ids())
     async def invite(self, inter: disnake.ApplicationCommandInteraction):
         """Responds with the invite link to this server"""

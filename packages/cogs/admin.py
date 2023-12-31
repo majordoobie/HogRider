@@ -9,6 +9,7 @@ from disnake.ext import commands
 from packages.utils import utils
 from packages.config import guild_ids
 from bot import BotClient
+from packages.utils.utils import EmbedColor
 
 SECTION_MATCH = re.compile(
     r'(?P<title>.+?)<a name="(?P<number>\d+|\d+.\d+)"></a>(?P<body>(.|\n)+?(?=(#{2,3}|\Z)))')
@@ -106,7 +107,11 @@ class Admin(commands.Cog):
             await ctx.send(error)
             self.log.error("Module load error", exc_info=True)
             return
-        await ctx.send(f"Loaded {cog} successfully")
+
+        await self.bot.inter_send(ctx,
+                                  f"Loaded module {cog}",
+                                  color=EmbedColor.SUCCESS)
+
         self.log.debug(f"Loaded {cog} successfully")
 
     @commands.check(utils.is_owner)
@@ -127,7 +132,9 @@ class Admin(commands.Cog):
             await ctx.send(error)
             self.log.error("Module unload error", exc_info=True)
             return
-        await ctx.send(f"Unloaded {cog} successfully")
+        await self.bot.inter_send(ctx,
+                                  f"Unloaded module {cog}",
+                                  color=EmbedColor.SUCCESS)
         self.log.debug(f"Unloaded {cog} successfully")
 
     @commands.check(utils.is_owner)
@@ -149,7 +156,9 @@ class Admin(commands.Cog):
             await ctx.send(error)
             self.log.error("Module reload error", exc_info=True)
             return
-        await ctx.send(f"Reloaded {cog} successfully")
+        await self.bot.inter_send(ctx,
+                                  f"Reloaded module {cog}",
+                                  color=EmbedColor.SUCCESS)
         self.log.debug(f"Reloaded {cog} successfully")
 
     @commands.check(utils.is_admin)
@@ -161,6 +170,7 @@ class Admin(commands.Cog):
         output = ''
         for i in self.bot.settings.cogs_list:
             output += f"+ {i.split('.')[-1]}\n"
+
         await self.bot.send(ctx, output)
 
     @commands.check(utils.is_admin)
@@ -220,8 +230,11 @@ class Admin(commands.Cog):
                                   url=message.jump_url))
 
         await channel.send(view=view)
-        await inter.edit_original_message(
-            f"Rules have been recreated. View here <#{channel.id}>")
+
+        await self.bot.inter_send(
+            inter,
+            f"Rules have been recreated. View here <#{channel.id}>"
+        )
 
     # class ConfirmButton(disnake.ui.Button[]):
     #     def __init__(self, label: str, style: disnake.ButtonStyle, *,
