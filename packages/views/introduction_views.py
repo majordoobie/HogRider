@@ -30,6 +30,12 @@ class LanguageDropdown(disnake.ui.StringSelect):
                 emoji=lang.get("emoji_repr"),
                 value=lang.get("role_id")))
 
+        options.append(disnake.SelectOption(
+            label="Other",
+            value="Other",
+            emoji="💻"
+        ))
+
         super().__init__(
             custom_id="Select Row",
             placeholder="Choose your languages",
@@ -45,15 +51,22 @@ class LanguageDropdown(disnake.ui.StringSelect):
             roles.append(guild.get_role(role_id))
 
         await inter.message.edit("Thank you!", view=None)
+        custom_id = f"{inter.user.id}_IM"
 
-        modal = IntroductionModal()
+        def check(modal_inter: disnake.ModalInteraction) -> bool:
+            if modal_inter.custom_id == custom_id:
+                return True
+            return False
+
+        modal = IntroductionModal(custom_id=custom_id)
         await inter.response.send_modal(modal)
+        await self.bot.wait_for("modal_submit", check=check)
 
         print(modal.introduction)
 
 
 class IntroductionModal(disnake.ui.Modal):
-    def __init__(self):
+    def __init__(self, custom_id: str) -> None:
         self.introduction: str = ""
         self.languages: str | None = None
 
@@ -77,11 +90,11 @@ class IntroductionModal(disnake.ui.Modal):
                 required=False
             ),
         ]
-        super().__init__(title="Introduction", components=components)
+        super().__init__(title="Introduction", components=components,
+                         custom_id=custom_id)
 
     async def callback(self, inter: disnake.ModalInteraction) -> None:
-        await inter.response.send_message(
-            "Thank you. An admin will be with you shortly.")
-
         self.introduction = inter.text_values.get("Introduction")
         self.languages = inter.text_values.get("Languages")
+        await inter.response.edit_message(
+            "Thank you. An admin will be with you shortly.")
