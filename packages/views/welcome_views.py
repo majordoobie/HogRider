@@ -1,10 +1,16 @@
+"""
+Welcome view is the persistent window that all new users can see.
+This file will handle the initial interaction with the introduction
+button by creating a new thread for the user. Further interaction
+inside the thread happens elsewhere.
+"""
 from logging import getLogger
 from typing import TYPE_CHECKING
 
 import disnake
 
 from .base_views import BaseView
-from .introduction_views import LanguageSelector
+from .thread_view import LanguageSelector
 from ..config import BotMode
 from ..utils import crud
 

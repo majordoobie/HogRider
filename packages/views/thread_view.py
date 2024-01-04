@@ -2,7 +2,8 @@ from typing import TYPE_CHECKING
 
 import disnake
 
-from packages.utils import models
+from packages.utils import crud, models
+from packages.views.admin_review_view import AdminReviewView
 
 if TYPE_CHECKING:
     from bot import BotClient
@@ -33,10 +34,11 @@ class LanguageDropdown(disnake.ui.StringSelect):
                 value=str(lang.role_id)
             ))
 
+        comp_emoji = '🖥️'
         options.append(disnake.SelectOption(
             label="Other",
             value="Other",
-            emoji="💻"
+            emoji=comp_emoji
         ))
 
         super().__init__(
@@ -47,11 +49,15 @@ class LanguageDropdown(disnake.ui.StringSelect):
             options=options,
         )
 
-    async def callback(self, inter: disnake.MessageInteraction):
+    async def _get_langs(self) -> list[models.Language] | None:
         roles = []
-        guild = self.bot.get_guild(self.bot.settings.guild)
-        for role_id in self.values:
-            roles.append(guild.get_role(role_id))
+        languages = await crud.get_languages(self.bot.pool)
+        for lang in languages:
+            if str(lang.role_id) in self.values:
+                roles.append(lang)
+        return roles
+
+    async def callback(self, inter: disnake.MessageInteraction):
 
         await inter.message.edit("Thank you!", view=None)
         custom_id = f"{inter.user.id}_IM"
@@ -63,9 +69,39 @@ class LanguageDropdown(disnake.ui.StringSelect):
 
         modal = IntroductionModal(custom_id=custom_id)
         await inter.response.send_modal(modal)
+        self.bot.log.debug(f"Sending user {inter.user} the introduction modal")
         await self.bot.wait_for("modal_submit", check=check)
 
-        print(modal.introduction)
+        langs = await self._get_langs()
+
+        lang_repr = ""
+        for lang in langs:
+            lang_repr += f"{lang.emoji_repr}\n"
+
+        other_langs: str | None = None
+        if modal.languages != "":
+            other_langs = f"\n\n**Other Languages:**\n```{modal.languages}```"
+
+        msg = (
+            "**Introduction:**\n"
+            f"{modal.introduction}\n\n"
+            f"**Languages:**\n"
+            f"{lang_repr}"
+            f"{other_langs if other_langs else ''}"
+        )
+
+        admin_panel = AdminReviewView(self.bot,
+                                      modal.introduction,
+                                      langs,
+                                      modal.languages)
+
+        panel = await self.bot.inter_send(inter.channel,
+                                          panel=msg,
+                                          author=inter.author,
+                                          flatten_list=True,
+                                          return_embed=True)
+
+        await inter.channel.send(embed=panel[0], view=admin_panel)
 
 
 class IntroductionModal(disnake.ui.Modal):
