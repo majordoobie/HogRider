@@ -2,14 +2,15 @@ from typing import TYPE_CHECKING
 
 import disnake
 
-from asyncpg import Record
+from packages.utils import models
 
 if TYPE_CHECKING:
     from bot import BotClient
 
 
 class LanguageSelector(disnake.ui.View):
-    def __init__(self, bot: "BotClient", lang_records: list[Record]) -> None:
+    def __init__(self, bot: "BotClient",
+                 lang_records: list[models.Language]) -> None:
         super().__init__(timeout=60 * 5)
         self.bot = bot
         self.selection = LanguageDropdown(bot, lang_records)
@@ -21,14 +22,16 @@ class LanguageSelector(disnake.ui.View):
 
 
 class LanguageDropdown(disnake.ui.StringSelect):
-    def __init__(self, bot: "BotClient", lang_records: list[Record]) -> None:
+    def __init__(self, bot: "BotClient",
+                 lang_records: list[models.Language]) -> None:
         self.bot = bot
         options = []
         for lang in lang_records:
             options.append(disnake.SelectOption(
-                label=lang.get("role_name"),
-                emoji=lang.get("emoji_repr"),
-                value=lang.get("role_id")))
+                label=lang.role_name,
+                emoji=lang.emoji_repr,
+                value=str(lang.role_id)
+            ))
 
         options.append(disnake.SelectOption(
             label="Other",

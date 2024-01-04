@@ -28,20 +28,12 @@ class Welcome(commands.Cog):
         self.log = getLogger(f"{self.bot.settings.log_name}.welcome")
         self.get_channel_cb = self.bot.settings.get_channel
 
-    def _get_channel(self) -> GuildChannel | Thread | PrivateChannel | None:
-        if self.bot.settings.mode == BotMode.LIVE_MODE:
-            return self.bot.get_channel(
-                self.get_channel_cb("welcome"))
-        else:
-            return self.bot.get_channel(
-                self.get_channel_cb("testing"))
-
     @commands.check(is_admin)
     @commands.slash_command(guild_ids=guild_ids())
     async def recreate_welcome(self,
                                inter: ApplicationCommandInteraction):
 
-        channel = self._get_channel()
+        channel = self.bot.get_channel(self.get_channel_cb("welcome"))
         self.bot.log.debug(f"Purging {channel}")
         await channel.purge()
 

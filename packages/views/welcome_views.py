@@ -6,6 +6,7 @@ import disnake
 from .base_views import BaseView
 from .introduction_views import LanguageSelector
 from ..config import BotMode
+from ..utils import crud
 
 if TYPE_CHECKING:
     from bot import BotClient
@@ -46,7 +47,8 @@ class WelcomeView(BaseView):
     async def introduce(self, button: disnake.ui.Button,
                         inter: disnake.MessageInteraction):
         await inter.response.defer()
-        self.log.info(f"{inter.author} pressed the introduce button. "
+
+        self.log.info(f"{inter.author.name} pressed the introduce button. "
                       f"Creating welcome thread.")
 
         thread: disnake.Thread = await inter.channel.create_thread(
@@ -56,7 +58,7 @@ class WelcomeView(BaseView):
             reason=f"User {inter.user.name} is introducing themselves"
         )
 
-        self.log.debug(f"Created thread {thread.name} {thread.id}.")
+        self.log.debug(f"Created thread {thread.name} {thread.jump_url}.")
 
         if self.bot.settings.mode == BotMode.DEV_MODE:
             me = self.bot.get_user(265368254761926667)
@@ -65,7 +67,11 @@ class WelcomeView(BaseView):
             await thread.send(f"<@&{self.bot.settings.get_role('admin')}>",
                               delete_after=5)
 
+        # Add the user then add them to the database so that we can clean up
+        # the database after they are removed
         await thread.add_user(inter.user)
+        await crud.set_thread_mgr(self.bot.pool, thread.id, inter.user.id,
+                                  thread.created_at)
         await thread.purge(limit=5)
 
         await inter.send("A private thread has been created for you. Please "
@@ -73,10 +79,7 @@ class WelcomeView(BaseView):
                          ephemeral=True,
                          delete_after=60 * 5)
 
-        # Get the roles for the selector
-        async with self.bot.pool.acquire() as conn:
-            records = await conn.fetch(
-                "SELECT role_id, role_name, emoji_repr FROM bot_language_board;")
+        records = await crud.get_languages(self.bot.pool)
 
         await thread.send("Welcome. Please select the languages that you "
                           "are proficient in. You will be able to change "

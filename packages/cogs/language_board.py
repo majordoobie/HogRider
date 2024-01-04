@@ -6,7 +6,7 @@ import disnake
 from disnake.ext import commands
 
 from packages.config import guild_ids
-from packages.utils import utils
+from packages.utils import crud, models, utils
 from packages.utils.utils import EmbedColor
 
 PANEL_DIRECTIONS = "Choose your language to receive your language role"
@@ -93,16 +93,15 @@ class LanguageBoard(commands.Cog):
         # Local constants
         developer_role = "Developer"
         no_roles = "No Roles"
-        sql = "SELECT role_id, role_name, emoji_repr FROM bot_language_board"
-        records = await self.bot.pool.fetch(sql)
-        include = [record['role_name'] for record in records]
+        languages = await crud.get_languages(self.bot.pool)
+        include = [language.role_name for language in languages]
         include.append(developer_role)
 
         # Object that is returned
         role_stats = {
             no_roles: 0,
             "roles": [],
-            "records": records,
+            "records": languages,
             "spacing": 0,
         }
         for member in guild.members:
@@ -125,9 +124,9 @@ class LanguageBoard(commands.Cog):
                         role_stats['spacing'] = len(role.name)
 
                     emoji_repr = "🖖"
-                    for record in records:
-                        if record['role_id'] == role.id:
-                            emoji_repr = record['emoji_repr']
+                    for language in languages:
+                        if language.role_id == role.id:
+                            emoji_repr = language.emoji_repr
 
                     role_stats[role.name] = {
                         "count": 1,
@@ -345,30 +344,29 @@ class LanguageBoard(commands.Cog):
         emoji: The emoji that represents the role.
         language: Name of the language. Avoid abbreviations.
         """
-        async with self.bot.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT role_id FROM bot_language_board WHERE role_id = $1",
-                role.id)
-            if row:
-                await self.bot.inter_send(
-                    inter,
-                    panel=(
-                        f"Role is already registered. Please list roles and/or "
-                        f"remove if you want to change."),
-                    color=EmbedColor.ERROR
-                )
+        if await crud.language_exists(self.bot.pool, role.id):
+            await self.bot.inter_send(
+                inter,
+                panel=(
+                    f"Role is already registered. Please list roles and/or "
+                    f"remove if you want to change."),
+                color=EmbedColor.ERROR
+            )
+            return
 
-                return
+        await crud.set_language(self.bot.pool,
+                                models.Language(
+                                    role_id=role.id,
+                                    role_name=role.name,
+                                    emoji_id=emoji.id,
+                                    emoji_repr=self._get_emoji_repr(emoji)
+                                ))
 
-            sql = "INSERT INTO bot_language_board (role_id, role_name, emoji_id, emoji_repr) VALUES ($1, $2, $3, $4)"
-            await conn.execute(sql, role.id, role.name, emoji.id,
-                               self._get_emoji_repr(emoji))
-
-            self.log.info(
-                f"Registered language {language} with "
-                f"<{role.name}:{role.id}> : {emoji}")
-            await self.bot.inter_send(inter, "Role added",
-                                      color=EmbedColor.SUCCESS)
+        self.log.info(
+            f"Registered language {language} with "
+            f"<{role.name}:{role.id}> : {emoji}")
+        await self.bot.inter_send(inter, "Role added",
+                                  color=EmbedColor.SUCCESS)
 
     @commands.check(utils.is_admin)
     @lang.sub_command(guild_ids=guild_ids())
@@ -384,23 +382,17 @@ class LanguageBoard(commands.Cog):
         ----------
         language: The language to remove
         """
-        async with self.bot.pool.acquire() as conn:
-            record = await conn.fetchrow(
-                "SELECT role_id FROM bot_language_board WHERE role_name = $1",
-                language)
+        lang = await crud.language_exists(self.bot.pool, language)
+        if lang:
+            await crud.del_language(self.bot.pool, lang.role_id)
 
-            if record:
-                await conn.execute(
-                    "DELETE FROM bot_language_board WHERE role_id = $1",
-                    record['role_id'])
+            await self.bot.inter_send(
+                inter,
+                panel=f"Language {language} has been removed",
+                color=EmbedColor.SUCCESS
+            )
 
-                await self.bot.inter_send(
-                    inter,
-                    panel=f"Language {language} has been removed",
-                    color=EmbedColor.SUCCESS
-                )
-
-        if not record:
+        else:
             await self.bot.inter_send(
                 inter,
                 panel=f"Unable to remove {language}",
@@ -416,12 +408,11 @@ class LanguageBoard(commands.Cog):
         """
         List the registered languages
         """
-        async with self.bot.pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT role_name, emoji_repr FROM bot_language_board;")
+
+        langs = await crud.get_languages(self.bot.pool)
         panel = f"{'Role':<30} {'Emoji'}\n"
-        for row in rows:
-            panel += f"`{row['role_name']:<15}` {row['emoji_repr']}\n"
+        for lang in langs:
+            panel += f"`{lang.role_name:<15}` {lang.emoji_repr}\n"
 
         await self.bot.inter_send(inter, panel=panel)
 
@@ -454,12 +445,10 @@ class LanguageBoard(commands.Cog):
         :return: List of possible options based on the user input
         """
 
-        async with self.bot.pool.acquire() as conn:
-            sql = "SELECT role_name FROM bot_language_board"
-            rows = await conn.fetch(sql)
+        langs = await crud.get_languages(self.bot.pool)
 
-        return [lang["role_name"] for lang in rows if
-                user_input.title() in lang["role_name"]]
+        return [lang.role_name for lang in langs if
+                user_input.title() in lang.role_name]
 
 
 def setup(bot):

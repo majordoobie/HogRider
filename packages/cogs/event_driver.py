@@ -6,6 +6,7 @@ import disnake
 from disnake import RawMessageDeleteEvent
 from disnake.ext import commands
 
+from packages.utils import crud
 from packages.utils.utils import EmbedColor
 from bot import BotClient
 
@@ -38,6 +39,35 @@ class EventDriver(commands.Cog):
                 return False
 
         return True
+
+    @commands.Cog.listener()
+    async def on_raw_thread_member_remove(
+            self,
+            payload: disnake.RawThreadMemberRemoveEvent) -> None:
+        """Handle deleting the threads created when a user joins the channel,
+        starts an introduction and they are either removed or they leave"""
+
+        # Ignore if the thread is not from welcome
+        if payload.thread.parent.id != self.bot.settings.get_channel(
+                "welcome"):
+            return
+
+        self.bot.log.debug(f"User {payload.member_id} has left the "
+                           f"welcome thread `{payload.thread}`")
+
+        thread = await crud.get_thread_mgr(self.bot.pool, payload.thread.id)
+        if thread is None:
+            # TODO Handle this situation
+            self.log.error("User left the thread but did not have a db "
+                           "record for it. This should not happen to see "
+                           f"what happen \n\n ```\n{payload}\n```")
+            return
+
+        if thread.user_id == payload.member_id:
+            await payload.thread.delete(
+                reason="Welcome thread deleted because welcomed user left")
+            self.bot.log.info(f"Thread `{payload.thread}` has been deleted")
+            await crud.delete_thread_mgr(self.bot.pool, thread.thread_id)
 
     @commands.Cog.listener()
     async def on_member_join(self, member: disnake.Member) -> None:
@@ -135,17 +165,7 @@ class EventDriver(commands.Cog):
         if not self._is_valid(bot_user=message.author):
             return
 
-        async with self.bot.pool.acquire() as conn:
-            sql = ("INSERT INTO user_message "
-                   "(message_id, user_id, channel_id, create_date, content) "
-                   "VALUES ($1, $2, $3, $4, $5)")
-
-            await conn.execute(sql,
-                               message.id,
-                               message.author.id,
-                               message.channel.id,
-                               message.created_at,
-                               message.content)
+        await crud.set_message(self.bot.pool, message)
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: disnake.Message,
@@ -206,20 +226,15 @@ class EventDriver(commands.Cog):
 
         else:
             # if not cached, see if the message is in the db
-            record: asyncpg.Record | None = None
-            async with self.bot.pool.acquire() as conn:
-                record = await conn.fetchrow(
-                    "SELECT * FROM user_message WHERE message_id = $1",
-                    payload.message_id)
+            message = await crud.get_message(self.bot.pool, payload.message_id)
 
-            if record:
-                send_payload["author"] = self.bot.get_user(
-                    record.get('user_id'))
-                send_payload["title"] = (f"Message deleted in "
-                                         f"<#{record.get('channel_id')}>")
-                send_payload["panel"] = record.get("content", "")
-                send_payload["footer"] = (f"ID: {record.get('message_id')} | "
-                                          f"{record.get('create_date')}")
+            if message:
+                send_payload["author"] = self.bot.get_user(message.user_id)
+                send_payload["title"] = (
+                    f"Message deleted in <#{message.channel_id}>")
+                send_payload["panel"] = message.content
+                send_payload["footer"] = (f"ID: {message.message_id} | "
+                                          f"{message.created_at}")
 
             else:
                 # otherwise we are shit out of luck
