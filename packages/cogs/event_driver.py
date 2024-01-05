@@ -150,7 +150,10 @@ class EventDriver(commands.Cog):
         for thread in member.guild.threads:
             if thread.name == f"Welcome {member.name}":
                 self.log.info(f"Removing thread \"Welcome {member.name}\"")
-                await thread.delete()
+                try:
+                    await thread.delete()
+                except:
+                    pass
 
     @commands.Cog.listener()
     async def on_message(self, message: disnake.Message) -> None:

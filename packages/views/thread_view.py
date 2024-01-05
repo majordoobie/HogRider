@@ -59,13 +59,11 @@ class LanguageDropdown(disnake.ui.StringSelect):
 
     async def callback(self, inter: disnake.MessageInteraction):
 
-        await inter.message.edit("Thank you!", view=None)
+        await inter.message.edit("Thank you.", view=None)
         custom_id = f"{inter.user.id}_IM"
 
         def check(modal_inter: disnake.ModalInteraction) -> bool:
-            if modal_inter.custom_id == custom_id:
-                return True
-            return False
+            return modal_inter.custom_id == custom_id
 
         modal = IntroductionModal(custom_id=custom_id)
         await inter.response.send_modal(modal)
@@ -91,6 +89,7 @@ class LanguageDropdown(disnake.ui.StringSelect):
         )
 
         admin_panel = AdminReviewView(self.bot,
+                                      inter.user,
                                       modal.introduction,
                                       langs,
                                       modal.languages)

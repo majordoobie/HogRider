@@ -10,16 +10,16 @@ if TYPE_CHECKING:
 
 class BaseView(disnake.ui.View):
     """
-    Class is a persistent listener with the introduce button. Whenever
-    a user clicks on the button it will trigger this view to introduce
-    the user with the moda.
+    Subclassed ui.View to add on_error logging
     """
 
     def __init__(self, bot: "BotClient", *args, **kwargs):
         super().__init__(*args, **kwargs)
-        print(kwargs)
         self.bot = bot
         self.log = getLogger(f"{self.bot.settings.log_name}.base_view")
+
+    async def on_timeout(self) -> None:
+        self.log.warning("View has timed out", exc_info=True)
 
     async def on_error(self,
                        error: Exception,
