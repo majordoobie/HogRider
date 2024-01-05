@@ -12,7 +12,7 @@ import disnake
 from .base_views import BaseView
 from .thread_view import LanguageSelector
 from ..config import BotMode
-from ..utils import crud
+from ..utils import crud, utils
 
 if TYPE_CHECKING:
     from bot import BotClient
@@ -32,14 +32,14 @@ class WelcomeView(BaseView):
 
     async def interaction_check(self, inter: disnake.Interaction):
         dev_role = self.bot.settings.get_role("developer")
-        temp_role = self.bot.settings.get_role("temp_guest")
+        applicant_role = self.bot.settings.get_role("applicant")
 
         if inter.user.get_role(dev_role) is not None:
             await inter.send("You already have the developer role!",
                              ephemeral=True)
             return False
 
-        if inter.user.get_role(temp_role) is not None:
+        if inter.user.get_role(applicant_role) is not None:
             await inter.send(
                 "Your application is being processed, please be patient.",
                 ephemeral=True)
@@ -53,6 +53,10 @@ class WelcomeView(BaseView):
     async def introduce(self, button: disnake.ui.Button,
                         inter: disnake.MessageInteraction):
         await inter.response.defer()
+
+        # Give the user the applicant role
+        applicant_role = utils.get_role(self.bot, "applicant")
+        await inter.user.add_roles(applicant_role)
 
         self.log.info(f"{inter.author.name} pressed the introduce button. "
                       f"Creating welcome thread.")

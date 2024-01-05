@@ -181,7 +181,7 @@ class EventDriver(commands.Cog):
 
         self.log.debug(f"**Message Edit Event:**\n\n"
                        f"```\n{before.content}\n```\n\n"
-                       f"```\n{before}\n```")
+                       f"```\n{after.content}\n```")
 
         if not self._is_valid(guild_id=before.guild.id,
                               channel_id=before.channel.id,

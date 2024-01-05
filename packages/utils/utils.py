@@ -1,6 +1,11 @@
-from disnake.ext.commands import NotOwner
+from typing import TYPE_CHECKING
 from enum import Enum
+
+from disnake.ext.commands import NotOwner
 import disnake
+
+if TYPE_CHECKING:
+    from bot import BotClient
 
 
 class EmbedColor(Enum):
@@ -51,3 +56,12 @@ def to_title(inter: disnake.ApplicationCommandInteraction, panel_name: str
              ) -> str:
     """Function acts as a parameter function for  Happy.py"""
     return panel_name.title()
+
+
+def get_role(bot: "BotClient", role_name: str | int) -> disnake.Role:
+    guild = bot.get_guild(bot.settings.guild)
+
+    if isinstance(role_name, str):
+        return guild.get_role(bot.settings.get_role(role_name))
+    else:
+        return guild.get_role(role_name)

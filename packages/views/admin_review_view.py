@@ -5,8 +5,7 @@ import disnake
 
 from .base_views import BaseView
 from ..config import BotMode
-from ..utils import crud, models
-from ..utils.utils import EmbedColor
+from ..utils import crud, models, utils
 
 if TYPE_CHECKING:
     from bot import BotClient
@@ -20,7 +19,7 @@ class AdminReviewView(BaseView):
     def __init__(self, bot: "BotClient",
                  user: disnake.Member,
                  introduction: str,
-                 languages: models.Language | None,
+                 languages: list[models.Language] | None,
                  other_languages: str) -> None:
         super().__init__(bot, timeout=None)
         self.bot = bot
@@ -45,8 +44,48 @@ class AdminReviewView(BaseView):
                        style=disnake.ButtonStyle.green)
     async def accept(self, button: disnake.ui.Button,
                      inter: disnake.MessageInteraction):
-        await inter.response.defer()
-        await inter.send("Accepting")
+        await inter.send("Processing...")
+
+        roles = [utils.get_role(self.bot, lang.role_id) for lang in
+                 self.languages]
+        roles.append(utils.get_role(self.bot, "developer"))
+
+        applicant_role = utils.get_role(self.bot, "applicant")
+
+        await self.user.remove_roles(applicant_role)
+        await self.user.add_roles(*roles, atomic=True)
+        self.log.debug(f"Gave {self.user} {roles}")
+
+        # This will trigger the delete event
+        await inter.channel.remove_user(self.user)
+        self.log.debug(f"Removed {self.user} from the thread")
+
+        mod_log = self.bot.get_channel(
+            self.bot.settings.get_channel("mod-log"))
+
+        lang_repr = ""
+        for lang in self.languages:
+            lang_repr += f"{lang.emoji_repr}\n"
+
+        other_langs: str | None = None
+        if self.other_languages != "":
+            other_langs = f"\n\n**Other Languages:**\n```{self.other_languages}```"
+
+        msg = (
+            "**Introduction:**\n"
+            f"{self.introduction}\n\n"
+            f"**Languages:**\n"
+            f"{lang_repr}"
+            f"{other_langs if other_langs else ''}"
+        )
+
+        await self.bot.inter_send(
+            mod_log,
+            title=f"User {self.user} has been approved by {inter.user}",
+            panel=msg,
+            author=self.user,
+            color=utils.EmbedColor.SUCCESS
+        )
 
     @disnake.ui.button(label="Decline",
                        style=disnake.ButtonStyle.red)
@@ -79,7 +118,7 @@ class AdminReviewView(BaseView):
                   f"by {inter.user.name}",
             panel=f"**Reason:**\n{modal.reason}",
             author=self.user,
-            color=EmbedColor.ERROR
+            color=utils.EmbedColor.ERROR
         )
 
     @disnake.ui.button(label="More info",
