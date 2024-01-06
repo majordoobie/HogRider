@@ -63,6 +63,10 @@ class AdminReviewView(BaseView):
         mod_log = self.bot.get_channel(
             self.bot.settings.get_channel("mod-log"))
 
+        general_channel = self.bot.get_channel(
+            self.bot.settings.get_channel("general")
+        )
+
         if self.more_info:
             introduction = await self._get_introduction(self.bot, inter,
                                                         self.introduction)
@@ -89,6 +93,14 @@ class AdminReviewView(BaseView):
         await self.bot.inter_send(
             mod_log,
             title=f"User {self.user} has been approved by {inter.user}",
+            panel=msg,
+            author=self.user,
+            color=utils.EmbedColor.SUCCESS
+        )
+
+        await self.bot.inter_send(
+            general_channel,
+            title=f"Please welcome `{self.user}`!",
             panel=msg,
             author=self.user,
             color=utils.EmbedColor.SUCCESS
