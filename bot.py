@@ -323,7 +323,8 @@ class BotClient(commands.Bot):
             return total_embeds
 
         if hasattr(inter, "response"):
-            send_func = inter.response.send_message
+            # send_func = inter.response.send_message
+            send_func = inter.send
         else:
             send_func = inter.send
 

@@ -8,6 +8,7 @@ from disnake.ext import commands
 from packages.config import guild_ids
 from packages.utils import crud, models, utils
 from packages.utils.utils import EmbedColor
+from packages.views.language_view import LanguageView
 
 PANEL_DIRECTIONS = "Choose your language to receive your language role"
 IMAGE_PATH = Path("language_board_image.png")
@@ -18,50 +19,6 @@ class LanguageBoard(commands.Cog):
         self.bot = bot
         self.gap = "<:gap:823216162568405012>"
         self.log = getLogger(f"{self.bot.settings.log_name}.admin")
-
-    async def _get_role_obj(self,
-                            ctx: Union[commands.Context, int],
-                            role_id: int) -> Optional[disnake.Role]:
-        """Get role object, otherwise log and return None"""
-        if isinstance(ctx, int):
-            guild = self.bot.get_guild(ctx)
-            role = guild.get_role(role_id)
-            return role
-        else:
-            try:
-                return ctx.guild.get_role(role_id)
-            except Exception:
-                self.bot.logger.exception(f"Could not retrieve role {role_id}")
-                print("Could not get role ", role_id)
-                return None
-
-    async def _get_emoji_obj(self,
-                             ctx: commands.Context,
-                             emoji_id: int) -> Optional[disnake.Emoji]:
-        """Get emoji object, otherwise log and return None. Docs recommend iteration instead
-        of fetching"""
-        for emoji in ctx.guild.emojis:
-            if emoji.id == emoji_id:
-                return emoji
-        self.bot.logger.exception(f"Could not retrieve role {emoji_id}")
-        return None
-
-    def _get_int_from_string(self, string: str) -> Optional[int]:
-        """Cast string object into a integer object"""
-        if string.isdigit():
-            return int(string)
-        else:
-            self.bot.logger.error(
-                f"User input {string} could not be casted to integer")
-            return None
-
-    @staticmethod
-    def _get_emoji_from_string(string: str) -> Optional[int]:
-        """Extract the emoji ID from the string"""
-        emoji_id = string.split(":")[-1].rstrip(">")
-        if emoji_id.isdigit():
-            return int(emoji_id)
-        return None
 
     @staticmethod
     def _get_emoji_repr(emoji: disnake.Emoji) -> str:
@@ -202,125 +159,6 @@ class LanguageBoard(commands.Cog):
             panel = f"```{panel}```"
             return panel
 
-    async def _get_message(self, message_id: int, channel_id: int,
-                           guild_id: int) -> Optional[disnake.Message]:
-        """Get a message object"""
-        guild, channel, message = None, None, None
-        try:
-            guild = self.bot.get_guild(guild_id)
-            channel = guild.get_channel(channel_id)
-            message: disnake.Message
-            message = await channel.fetch_message(message_id)
-        except Exception:
-            msg = (
-                f"Could not find the message object\n"
-                f"Guild ID: {guild_id}\n"
-                f"Guild obj: {guild}\n"
-                f"Channel ID: {channel_id}\n"
-                f"Channel obj: {channel}\n"
-                f"Message ID: {message_id}\n"
-                f"Message obj: {message}\n\n"
-            )
-
-            self.bot.logger.error(
-                f"User input {msg} could not be casted to integer",
-                exc_info=True)
-            return None
-        return message
-
-    @commands.Cog.listener()
-    async def on_raw_reaction_add(self,
-                                  payload: disnake.RawReactionActionEvent):
-
-        # Ignore the bot
-        if payload.member.bot:
-            return
-
-        # Ignore if the reaction has nothing to do with the static board
-        if payload.message_id != self.bot.stats_board_id:
-            return
-
-        # Reset the panel reaction
-        message = await self._get_message(payload.message_id,
-                                          payload.channel_id, payload.guild_id)
-        if message is None:
-            return
-        await message.remove_reaction(payload.emoji, payload.member)
-
-        # confirm that the reaction is a registered reaction
-        async with self.bot.pool.acquire() as conn:
-            reaction = await conn.fetch(
-                "SELECT role_id, role_name FROM bot_language_board WHERE emoji_id = $1",
-                payload.emoji.id)
-            if len(reaction) == 1:
-                reaction = reaction[0]
-            else:
-                self.bot.logger.error(
-                    f"Returned multiple database records with emoji id of {payload.emoji.id}")
-        if not reaction:
-            return
-
-        member: disnake.Member = payload.member
-        member_roles = member.roles
-        remove_role = False
-
-        # Check if this operation is a add or remove
-        for role in member_roles:
-            if role.id == reaction['role_id']:
-                remove_role = True
-
-        # Remove role if user already  has the role
-        if remove_role:
-            new_roles = []
-            for role in member_roles:
-                if role.id != reaction['role_id']:
-                    new_roles.append(role)
-            try:
-                await member.edit(roles=new_roles)
-            except disnake.Forbidden:
-                self.bot.logger.error(
-                    f"Could not add {reaction['role_name']} to {member.display_name}",
-                    exc_info=True)
-
-        # Otherwise add the role
-        else:
-            role = await self._get_role_obj(payload.guild_id,
-                                            reaction['role_id'])
-            try:
-                await member.add_roles(role)
-            except disnake.Forbidden:
-                self.bot.logger.error(
-                    f"Could not add {reaction['role_name']} to {member.display_name}",
-                    exc_info=True)
-
-    @commands.check(utils.is_admin)
-    @commands.slash_command(guild_ids=guild_ids())
-    async def language_board(self, ctx):
-        """
-        Create a reaction based panel that gives users roles when they clik on
-        the emoji
-        """
-        # Fetch all the emojis from the database
-        async with self.bot.pool.acquire() as conn:
-            emojis = await conn.fetch(
-                "SELECT emoji_repr FROM bot_language_board")
-
-        # Save the board image to memory
-        with IMAGE_PATH.open("rb") as f_handle:
-            board_image = disnake.File(f_handle)
-
-        board = await ctx.send(file=board_image)
-
-        # Add the emojis to the panel
-        for emoji in emojis:
-            await board.add_reaction(emoji['emoji_repr'])
-
-        # Save panel id to memory
-        self.bot.stats_board_id = board.id
-        self.bot.logger.info(f"Created board with ID: {board.id}")
-        await self.bot.pool.execute("UPDATE smelly_mike SET board_id = $1",
-                                    self.bot.stats_board_id)
-
     @commands.check(utils.is_admin)
     @commands.slash_command(guild_ids=guild_ids())
     async def lang(self, inter: disnake.ApplicationCommandInteraction):
@@ -344,6 +182,7 @@ class LanguageBoard(commands.Cog):
         emoji: The emoji that represents the role.
         language: Name of the language. Avoid abbreviations.
         """
+        await inter.response.defer()
         if await crud.language_exists(self.bot.pool, role.id):
             await self.bot.inter_send(
                 inter,
@@ -365,6 +204,8 @@ class LanguageBoard(commands.Cog):
         self.log.info(
             f"Registered language {language} with "
             f"<{role.name}:{role.id}> : {emoji}")
+
+        # await inter.send("Done")
         await self.bot.inter_send(inter, "Role added",
                                   color=EmbedColor.SUCCESS)
 
@@ -382,6 +223,7 @@ class LanguageBoard(commands.Cog):
         ----------
         language: The language to remove
         """
+        await inter.response.defer()
         lang = await crud.language_exists(self.bot.pool, language)
         if lang:
             await crud.del_language(self.bot.pool, lang.role_id)
@@ -408,7 +250,7 @@ class LanguageBoard(commands.Cog):
         """
         List the registered languages
         """
-
+        await inter.response.defer()
         langs = await crud.get_languages(self.bot.pool)
         panel = f"{'Role':<30} {'Emoji'}\n"
         for lang in langs:
@@ -422,7 +264,7 @@ class LanguageBoard(commands.Cog):
         """
         List how many users have each language role
         """
-
+        await inter.response.defer()
         role_stats = await self._get_role_stats(inter.guild)
         panel = self._get_roles_panel(role_stats, with_emojis=False)
         await self.bot.inter_send(
@@ -430,6 +272,24 @@ class LanguageBoard(commands.Cog):
             title="Role Stats",
             panel=panel
         )
+
+    @commands.slash_command(guild_ids=guild_ids())
+    async def get_language_role(
+            self,
+            inter: disnake.ApplicationCommandInteraction) -> None:
+        """
+        Request language roles granting you access to help channels for
+        that language
+        """
+        await inter.response.defer()
+        langs = await crud.get_languages(self.bot.pool)
+        view = LanguageView(self.bot, langs)
+
+        self.log.debug(f"Sending `{inter.user}` the language role panel")
+        await inter.send(
+            "Please select the languages you would like to add...",
+            view=view, ephemeral=True)
+
 
     @remove_role.autocomplete("language")
     async def language_name_autocmp(

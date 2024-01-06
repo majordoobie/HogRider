@@ -51,8 +51,7 @@ class AdminReviewView(BaseView):
         roles = [utils.get_role(self.bot, lang.role_id) for lang in
                  self.languages]
 
-        # TODO Remove thids
-        # roles.append(utils.get_role(self.bot, "developer"))
+        roles.append(utils.get_role(self.bot, "developer"))
 
         applicant_role = utils.get_role(self.bot, "applicant")
 
