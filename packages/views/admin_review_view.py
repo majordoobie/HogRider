@@ -3,9 +3,9 @@ from typing import TYPE_CHECKING
 
 import disnake
 
+from .applicant_more_info import ApplicantMoreInfo
 from .base_views import BaseView
-from ..config import BotMode
-from ..utils import crud, models, utils
+from ..utils import models, utils
 
 if TYPE_CHECKING:
     from bot import BotClient
@@ -27,6 +27,7 @@ class AdminReviewView(BaseView):
         self.introduction = introduction
         self.languages = languages
         self.other_languages = other_languages
+        self.more_info = False
 
         self.log = getLogger(f"{self.bot.settings.log_name}.AdminReview")
 
@@ -44,11 +45,14 @@ class AdminReviewView(BaseView):
                        style=disnake.ButtonStyle.green)
     async def accept(self, button: disnake.ui.Button,
                      inter: disnake.MessageInteraction):
-        await inter.send("Processing...")
+        await inter.response.defer()
+        # await inter.send("Processing...")
 
         roles = [utils.get_role(self.bot, lang.role_id) for lang in
                  self.languages]
-        roles.append(utils.get_role(self.bot, "developer"))
+
+        # TODO Remove thids
+        # roles.append(utils.get_role(self.bot, "developer"))
 
         applicant_role = utils.get_role(self.bot, "applicant")
 
@@ -56,12 +60,14 @@ class AdminReviewView(BaseView):
         await self.user.add_roles(*roles, atomic=True)
         self.log.debug(f"Gave {self.user} {roles}")
 
-        # This will trigger the delete event
-        await inter.channel.remove_user(self.user)
-        self.log.debug(f"Removed {self.user} from the thread")
-
         mod_log = self.bot.get_channel(
             self.bot.settings.get_channel("mod-log"))
+
+        if self.more_info:
+            introduction = await self._get_introduction(self.bot, inter,
+                                                        self.introduction)
+        else:
+            introduction = self.introduction
 
         lang_repr = ""
         for lang in self.languages:
@@ -69,11 +75,12 @@ class AdminReviewView(BaseView):
 
         other_langs: str | None = None
         if self.other_languages != "":
-            other_langs = f"\n\n**Other Languages:**\n```{self.other_languages}```"
+            other_langs = (f"\n\n**Other Languages:**\n```"
+                           f"{self.other_languages}```")
 
         msg = (
             "**Introduction:**\n"
-            f"{self.introduction}\n\n"
+            f"{introduction}\n\n"
             f"**Languages:**\n"
             f"{lang_repr}"
             f"{other_langs if other_langs else ''}"
@@ -86,6 +93,10 @@ class AdminReviewView(BaseView):
             author=self.user,
             color=utils.EmbedColor.SUCCESS
         )
+
+        # This will trigger the delete event
+        await inter.channel.remove_user(self.user)
+        self.log.debug(f"Removed {self.user} from the thread")
 
     @disnake.ui.button(label="Decline",
                        style=disnake.ButtonStyle.red)
@@ -125,11 +136,31 @@ class AdminReviewView(BaseView):
                        style=disnake.ButtonStyle.blurple)
     async def more_info(self, button: disnake.ui.Button,
                         inter: disnake.MessageInteraction):
+        self.more_info = True
         await inter.response.defer()
         await inter.send(
             f"{self.user.mention} could you please provide "
             f"more information about how you plan on "
             f"using the API")
+
+    async def _get_introduction(self, bot: "BotClient",
+                                inter: disnake.MessageInteraction,
+                                introduction: str) -> str:
+        self.log.debug(f"Presenting `{inter.user}` with the "
+                       f"ApplicationMoreInfo modal")
+
+        view = ApplicantMoreInfo(self.bot, inter.user, introduction)
+
+        panel = await self.bot.inter_send(
+            inter.channel,
+            panel="Please collect the users message that will be pasted in "
+                  "the modal. When ready, click on the button.",
+            flatten_list=True,
+            return_embed=True)
+
+        await inter.send(embed=panel[0], view=view, ephemeral=True)
+        await view.wait()
+        return view.introduction
 
 
 class DeclineModal(disnake.ui.Modal):

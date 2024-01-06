@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime, timezone
 
-import asyncpg
 import disnake
 from disnake import RawMessageDeleteEvent
 from disnake.ext import commands
