@@ -57,6 +57,8 @@ async def language_exists(pool: Pool,
 
     if row:
         return models.Language(**row)
+    else:
+        return None
 
 
 async def set_message(pool: Pool, message: disnake.Message) -> None:
