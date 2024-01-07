@@ -35,10 +35,10 @@ services:
 volumes:
   hogrider_volume:
     external: true
-    name: apibot_volume
+    name: hogrider_volume
 
 networks:
   hogrider_network:
     external: true
-    name: apibot_network
+    name: hogrider_network
 

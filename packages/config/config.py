@@ -107,11 +107,10 @@ class Settings:
         if BotMode.LIVE_MODE == self.mode:
             return [
                 "admin",
-                "members",
+                "event_driver",
+                "general",
                 "language_board",
-                "messages",
-                "welcome",
-                "general"
+                "welcome"
             ]
 
         else:
