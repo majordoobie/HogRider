@@ -214,7 +214,7 @@ class LanguageBoard(commands.Cog):
     async def remove_role(
             self,
             inter: disnake.ApplicationCommandInteraction,
-            language: str = commands.Param(converter=utils.to_title),
+            language: str,
     ) -> None:
         """
         Remove registered languages. This is the only way to edit them

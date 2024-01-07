@@ -15,7 +15,7 @@ services:
 
   hogrider:
     container_name: hogrider
-    image: apibot:v1.0
+    image: hogrider:v1.0
     depends_on:
       - hogrider_db
     build:
