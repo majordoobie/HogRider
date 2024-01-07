@@ -52,6 +52,9 @@ async def _get_pool(settings: Settings) -> asyncpg.pool.Pool:
                                      encoder=json.dumps, decoder=json.loads)
 
         pool = await asyncpg.create_pool(settings.dsn, init=init)
+        if pool is None:
+            raise Exception("Unable to create pool")
+
         async with pool.acquire() as con:
             for table in init_tables():
                 await con.execute(table)
