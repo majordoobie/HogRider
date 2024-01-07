@@ -54,8 +54,9 @@ class General(commands.Cog):
     @commands.slash_command(guild_ids=guild_ids())
     async def vps(self, inter: disnake.ApplicationCommandInteraction):
         """Responds with a link to a GitHub MD on VPS options"""
-        await self.bot.inter_send(inter,
-                                  "<https://github.com/wpmjones/apibot/blob/master/Rules/vps_services.md>")
+        await self.bot.inter_send(
+            inter,
+            "<https://github.com/majordoobie/HogRider/blob/main/Rules/vps_services.md>")
 
     @commands.slash_command(guild_ids=guild_ids())
     async def rules(self, inter: disnake.ApplicationCommandInteraction):

@@ -49,20 +49,20 @@ class Admin(commands.Cog):
     #                                    )
     #     await ctx.send(file=transcript_file)
 
-    @commands.command(name="add_user", hidden=True)
-    @commands.is_owner()
-    async def add_user(self, ctx, usr):
-        """Add user for coc discord links api (owner only)"""
-        PUNCTUATION = "!@#$%^&*"
-        pwd = choice(string.ascii_letters) + choice(PUNCTUATION) + choice(
-            string.digits)
-        characters = string.ascii_letters + PUNCTUATION + string.digits
-        pwd += "".join(choice(characters) for x in range(randint(8, 12)))
-        sql = "INSERT INTO coc_discord_users (username, passwd) VALUES ($1, $2)"
-        await self.bot.pool.execute(sql, usr, pwd)
-        await ctx.send(
-            f"User: {usr} has been created with the following password:")
-        await ctx.send(pwd)
+    # @commands.command(name="add_user", hidden=True)
+    # @commands.is_owner()
+    # async def add_user(self, ctx, usr):
+    #     """Add user for coc discord links api (owner only)"""
+    #     PUNCTUATION = "!@#$%^&*"
+    #     pwd = choice(string.ascii_letters) + choice(PUNCTUATION) + choice(
+    #         string.digits)
+    #     characters = string.ascii_letters + PUNCTUATION + string.digits
+    #     pwd += "".join(choice(characters) for x in range(randint(8, 12)))
+    #     sql = "INSERT INTO coc_discord_users (username, passwd) VALUES ($1, $2)"
+    #     await self.bot.pool.execute(sql, usr, pwd)
+    #     await ctx.send(
+    #         f"User: {usr} has been created with the following password:")
+    #     await ctx.send(pwd)
 
     @commands.check(utils.is_owner)
     @commands.slash_command(guild_ids=guild_ids())
@@ -89,7 +89,7 @@ class Admin(commands.Cog):
 
     @commands.check(utils.is_owner)
     @commands.slash_command(guild_ids=guild_ids())
-    async def load_module(self, ctx, module: str):
+    async def load_module(self, inter, module: str):
         """
         Load a module into the running bot
 
@@ -98,17 +98,16 @@ class Admin(commands.Cog):
         module
             The module to load.
         """
-        print(module)
+        await inter.response.defer()
         cog = f"{self.bot.settings.cog_path}.{module}"
-        print(cog)
         try:
             self.bot.load_extension(cog)
         except Exception as error:
-            await ctx.send(error)
+            await inter.send(error)
             self.log.error("Module load error", exc_info=True)
             return
 
-        await self.bot.inter_send(ctx,
+        await self.bot.inter_send(inter,
                                   f"Loaded module {cog}",
                                   color=EmbedColor.SUCCESS)
 
@@ -116,7 +115,7 @@ class Admin(commands.Cog):
 
     @commands.check(utils.is_owner)
     @commands.slash_command(guild_ids=guild_ids())
-    async def unload_cog(self, ctx, module: str):
+    async def unload_cog(self, inter, module: str):
         """
         Unload a module from the running bot.
 
@@ -125,21 +124,22 @@ class Admin(commands.Cog):
         module
             The module to unload
         """
+        await inter.response.defer()
         cog = f"{self.bot.settings.cog_path}.{module}"
         try:
             self.bot.unload_extension(cog)
         except Exception as error:
-            await ctx.send(error)
+            await inter.send(error)
             self.log.error("Module unload error", exc_info=True)
             return
-        await self.bot.inter_send(ctx,
+        await self.bot.inter_send(inter,
                                   f"Unloaded module {cog}",
                                   color=EmbedColor.SUCCESS)
         self.log.debug(f"Unloaded {cog} successfully")
 
     @commands.check(utils.is_owner)
     @commands.slash_command(guild_ids=guild_ids())
-    async def reload(self, ctx, module: str):
+    async def reload(self, inter, module: str):
         """
         Reload a module from the running bot
 
@@ -148,15 +148,16 @@ class Admin(commands.Cog):
         module
             The module to reload
         """
+        await inter.response.defer()
         cog = f"{self.bot.settings.cog_path}.{module}"
 
         try:
             self.bot.reload_extension(cog)
         except Exception as error:
-            await ctx.send(error)
+            await inter.send(error)
             self.log.error("Module reload error", exc_info=True)
             return
-        await self.bot.inter_send(ctx,
+        await self.bot.inter_send(inter,
                                   f"Reloaded module {cog}",
                                   color=EmbedColor.SUCCESS)
         self.log.debug(f"Reloaded {cog} successfully")
@@ -192,7 +193,7 @@ class Admin(commands.Cog):
         await inter.response.defer()
 
         channel = self.bot.get_channel(
-            self.bot.settings.get_channel("testing"))
+            self.bot.settings.get_channel("rules"))
         await channel.purge()
 
         with open("Rules/code_of_conduct.md", encoding="utf-8") as fp:

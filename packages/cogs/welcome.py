@@ -30,6 +30,10 @@ class Welcome(commands.Cog):
     @commands.slash_command(guild_ids=guild_ids())
     async def recreate_welcome(self,
                                inter: ApplicationCommandInteraction):
+        """
+        Repopulate the welcome panel
+        """
+
         channel = self.bot.get_channel(self.get_channel_cb("welcome"))
         self.bot.log.debug(f"Purging {channel}")
         await channel.purge()
