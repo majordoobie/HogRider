@@ -224,7 +224,10 @@ class LanguageBoard(commands.Cog):
         language: The language to remove
         """
         await inter.response.defer()
+
+        self.log.debug(f"Fetching for {language} to delete")
         lang = await crud.language_exists(self.bot.pool, language)
+        self.log.debug(f"Fetched {lang}")
         if lang:
             await crud.del_language(self.bot.pool, lang.role_id)
 
