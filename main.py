@@ -1,15 +1,15 @@
 import argparse
 import asyncio
-import config
 import json
+import logging
 
 import asyncpg
 import coc
-import nextcord
+import disnake
 
-from bot import ApiBot
-from config import Settings, BotMode
-from config.db_scema import init_tables
+from bot import BotClient
+from packages.config import Settings, BotMode, init_tables, load_settings
+from packages.utils.logging_setup import BotLogger
 
 
 def _bot_args() -> argparse.Namespace:
@@ -39,9 +39,9 @@ def _get_settings() -> Settings:
     args = _bot_args()
 
     if args.live_mode:
-        return config.load_settings(BotMode.LIVE_MODE)
+        return load_settings(BotMode.LIVE_MODE)
     else:
-        return config.load_settings(BotMode.DEV_MODE)
+        return load_settings(BotMode.DEV_MODE)
 
 
 async def _get_pool(settings: Settings) -> asyncpg.pool.Pool:
@@ -57,8 +57,8 @@ async def _get_pool(settings: Settings) -> asyncpg.pool.Pool:
                 await con.execute(table)
 
         return pool
-    except Exception as error:
-        exit(f"PG error: {error}")
+    except Exception:
+        log.critical("Pool error", exc_info=True)
 
 
 async def _get_coc_client(settings: Settings) -> coc.Client:
@@ -68,19 +68,19 @@ async def _get_coc_client(settings: Settings) -> coc.Client:
         return coc_client
 
     except coc.InvalidCredentials as err:
-        exit(err)
+        log.critical("CoC error", exc_info=True)
 
 
 def _get_bot_client(settings: Settings, coc_client: coc.Client,
-                    pool: asyncpg.Pool) -> ApiBot:
-    intents = nextcord.Intents.default()
+                    pool: asyncpg.Pool) -> BotClient:
+    intents = disnake.Intents.default()
     intents.message_content = True
     intents.members = True
     intents.reactions = True
     intents.emojis = True
     intents.guilds = True
 
-    return ApiBot(
+    return BotClient(
         settings=settings,
         coc_client=coc_client,
         pool=pool,
@@ -89,17 +89,12 @@ def _get_bot_client(settings: Settings, coc_client: coc.Client,
 
 
 async def main(settings: Settings) -> None:
-    print("Getting Pool")
     pool = await _get_pool(settings)
-
-    print("Getting client")
     coc_client = await _get_coc_client(settings)
-
-    print("Getting Bot")
+    log.debug("Bot initialized, starting bot...")
     bot = _get_bot_client(settings, coc_client, pool)
 
     try:
-        print("Starting...")
         await bot.start(settings.bot_token)
 
     except KeyboardInterrupt:
@@ -114,8 +109,13 @@ async def main(settings: Settings) -> None:
 if __name__ == "__main__":
     _settings = _get_settings()
     try:
+        BotLogger(_settings)
+    except Exception as error:
+        exit(error)
+
+    log = logging.getLogger(f"{_settings.log_name}.Main")
+
+    try:
         asyncio.run(main(_settings))
     except KeyboardInterrupt:
         pass
-    finally:
-        config.save_settings(_settings)
