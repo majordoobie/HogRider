@@ -5,6 +5,7 @@ from packages.config import guild_ids
 
 from bot import BotClient
 
+
 class General(commands.Cog):
     def __init__(self, bot: BotClient):
         self.bot = bot
@@ -14,7 +15,6 @@ class General(commands.Cog):
         welcome_channel = self.bot.settings.get_channel("welcome")
         if message.channel.id == welcome_channel and message.type is disnake.MessageType.thread_created:
             await message.delete(delay=5)
-
 
     @commands.slash_command(guild_ids=guild_ids())
     async def invite(self, inter: disnake.ApplicationCommandInteraction):

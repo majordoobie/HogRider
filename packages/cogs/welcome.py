@@ -1,13 +1,11 @@
 from logging import getLogger
 
-import disnake.abc
-from disnake.abc import GuildChannel, PrivateChannel
 from disnake.ext import commands
-from disnake import ApplicationCommandInteraction, Thread
+from disnake import ApplicationCommandInteraction
 
 from bot import BotClient
 from packages.utils.utils import is_admin
-from packages.config import guild_ids, BotMode
+from packages.config import guild_ids
 from packages.views.welcome_views import WelcomeView
 
 WELCOME_MESSAGE = (
@@ -32,7 +30,6 @@ class Welcome(commands.Cog):
     @commands.slash_command(guild_ids=guild_ids())
     async def recreate_welcome(self,
                                inter: ApplicationCommandInteraction):
-
         channel = self.bot.get_channel(self.get_channel_cb("welcome"))
         self.bot.log.debug(f"Purging {channel}")
         await channel.purge()
@@ -47,8 +44,7 @@ class Welcome(commands.Cog):
 
         await channel.send(embed=panel[0], view=WelcomeView(self.bot))
         await self.bot.inter_send(inter,
-                                  panel="Welcome recreated",)
-
+                                  panel="Welcome recreated", )
 
 
 def setup(bot):

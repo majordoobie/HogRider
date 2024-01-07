@@ -1,4 +1,4 @@
-asyncpg
-coc.py
-disnake
-requests
+asyncpg==0.29.0
+coc.py==3.2.0
+disnake==2.9.1
+requests==2.31.0
