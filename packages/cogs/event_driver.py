@@ -178,15 +178,15 @@ class EventDriver(commands.Cog):
         if not before.content:
             return
 
-        self.log.debug(f"**Message Edit Event:**\n\n"
-                       f"```\n{before.content}\n```\n\n"
-                       f"```\n{after.content}\n```")
-
         if not self._is_valid(guild_id=before.guild.id,
                               channel_id=before.channel.id,
                               bot_user=before.author
                               ):
             return
+
+        self.log.debug(f"**Message Edit Event:**\n\n"
+                       f"```\n{before.content}\n```\n\n"
+                       f"```\n{after.content}\n```")
 
         mod_log = self.bot.get_channel(self.get_channel_cb("mod-log"))
         await self.bot.inter_send(
@@ -219,6 +219,10 @@ class EventDriver(commands.Cog):
             # the bot (only latest 1000 messages)
             message = payload.cached_message
 
+            if message.author.bot:
+                self.log.debug("Event from bot. Ignoring.")
+                return
+
             send_payload["author"] = message.author
             send_payload["title"] = (f"Message deleted in "
                                      f"<#{message.channel.id}>")
@@ -229,6 +233,11 @@ class EventDriver(commands.Cog):
         else:
             # if not cached, see if the message is in the db
             message = await crud.get_message(self.bot.pool, payload.message_id)
+
+            user = self.bot.get_user(message.user_id)
+            if user.bot:
+                self.log.debug("Event from bot. Ignoring.")
+                return
 
             if message:
                 send_payload["author"] = self.bot.get_user(message.user_id)
