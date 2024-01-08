@@ -284,15 +284,25 @@ class LanguageBoard(commands.Cog):
         Request language roles granting you access to help channels for
         that language
         """
-        await inter.response.defer()
+        await inter.response.defer(ephemeral=True)
+        custom_id = f"{inter.author.id}_LANG"
+
         langs = await crud.get_languages(self.bot.pool)
-        view = LanguageView(self.bot, langs)
-
+        view = LanguageView(self.bot, langs, custom_id)
         self.log.debug(f"Sending `{inter.user}` the language role panel")
-        await inter.send(
-            "Please select the languages you would like to add...",
-            view=view, ephemeral=True)
 
+        await inter.edit_original_message(
+            "Please select the languages you would like to add...",
+            view=view)
+
+        def check(select_inter: disnake.MessageInteraction) -> bool:
+            return select_inter.component.custom_id == custom_id
+
+        await self.bot.wait_for("dropdown", check=check)
+
+        await inter.edit_original_message(
+            "Done",
+            view=None)
 
     @remove_role.autocomplete("language")
     async def language_name_autocmp(
