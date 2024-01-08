@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 
 import disnake
 
+from packages.config import BotMode
 from packages.utils import crud, models
 from packages.views.admin_review_view import AdminReviewView
 
@@ -99,6 +100,14 @@ class LanguageDropdown(disnake.ui.StringSelect):
                                           author=inter.author,
                                           flatten_list=True,
                                           return_embed=True)
+
+        if self.bot.settings.mode == BotMode.DEV_MODE:
+            me = self.bot.get_user(265368254761926667)
+            await inter.channel.send(me.mention, delete_after=5)
+        else:
+            await inter.channel.send(
+                f"<@&{self.bot.settings.get_role('admin')}>",
+                delete_after=5)
 
         await inter.channel.send(embed=panel[0], view=admin_panel)
 

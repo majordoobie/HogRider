@@ -70,19 +70,11 @@ class WelcomeView(BaseView):
 
         self.log.debug(f"Created thread {thread.name} {thread.jump_url}.")
 
-        if self.bot.settings.mode == BotMode.DEV_MODE:
-            me = self.bot.get_user(265368254761926667)
-            await thread.send(me.mention, delete_after=5)
-        else:
-            await thread.send(f"<@&{self.bot.settings.get_role('admin')}>",
-                              delete_after=5)
-
         # Add the user then add them to the database so that we can clean up
         # the database after they are removed
         await thread.add_user(inter.user)
         await crud.set_thread_mgr(self.bot.pool, thread.id, inter.user.id,
                                   thread.created_at)
-        await thread.purge(limit=5)
 
         await inter.send("A private thread has been created for you. Please "
                          f"click on the thread and follow the prompts.\n{thread.jump_url}",
