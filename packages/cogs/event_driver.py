@@ -222,7 +222,6 @@ class EventDriver(commands.Cog):
             message = payload.cached_message
 
             if message.author.bot:
-                self.log.debug("Event from bot. Ignoring.")
                 return
 
             send_payload["author"] = message.author
@@ -238,7 +237,6 @@ class EventDriver(commands.Cog):
 
             user = self.bot.get_user(message.user_id)
             if user.bot:
-                self.log.debug("Event from bot. Ignoring.")
                 return
 
             if message:
