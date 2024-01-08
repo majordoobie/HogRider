@@ -51,8 +51,10 @@ class EventDriver(commands.Cog):
                 "welcome"):
             return
 
-        self.bot.log.debug(f"User {payload.member_id} has left the "
-                           f"welcome thread `{payload.thread}`")
+        user = payload.cached_member if payload.cached_member else None
+        self.bot.log.debug(
+            f"User `{user if user else payload.member_id}` has left the "
+            f"welcome thread `{payload.thread}`")
 
         thread = await crud.get_thread_mgr(self.bot.pool, payload.thread.id)
         if thread is None:
@@ -64,7 +66,7 @@ class EventDriver(commands.Cog):
 
         if thread.user_id == payload.member_id:
             await payload.thread.delete(
-                reason="Welcome thread deleted because welcomed user left")
+                reason="Welcome thread deleted because applicant user left")
             self.bot.log.info(f"Thread `{payload.thread}` has been deleted")
             await crud.delete_thread_mgr(self.bot.pool, thread.thread_id)
 
@@ -178,6 +180,9 @@ class EventDriver(commands.Cog):
         if not before.content:
             return
 
+        if before.content == after.content:
+            return
+
         if not self._is_valid(guild_id=before.guild.id,
                               channel_id=before.channel.id,
                               bot_user=before.author
@@ -220,7 +225,6 @@ class EventDriver(commands.Cog):
             message = payload.cached_message
 
             if message.author.bot:
-                self.log.debug("Event from bot. Ignoring.")
                 return
 
             send_payload["author"] = message.author
@@ -236,7 +240,6 @@ class EventDriver(commands.Cog):
 
             user = self.bot.get_user(message.user_id)
             if user.bot:
-                self.log.debug("Event from bot. Ignoring.")
                 return
 
             if message:

@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 import disnake
 
-from packages.utils import crud, models, utils
+from packages.utils import models, utils
 
 if TYPE_CHECKING:
     from bot import BotClient
@@ -11,9 +11,9 @@ if TYPE_CHECKING:
 
 class LanguageView(disnake.ui.View):
     def __init__(self, bot: "BotClient",
-                 lang_records: list[models.Language],
+                 lang_records: dict[int, models.MemberLanguage],
                  custom_id: str) -> None:
-        super().__init__(timeout=60 * 5)
+        super().__init__(timeout=60)
         self.bot = bot
         self.selection = LanguageSelector(bot, lang_records, custom_id)
         self.add_item(self.selection)
@@ -21,22 +21,24 @@ class LanguageView(disnake.ui.View):
 
     async def on_timeout(self) -> None:
         """Clear the panel on timeout"""
-        print("timeout called")
         self.remove_item(self.selection)
 
 
 class LanguageSelector(disnake.ui.StringSelect):
     def __init__(self, bot: "BotClient",
-                 lang_records: list[models.Language],
+                 lang_records: dict[int, models.MemberLanguage],
                  custom_id: str) -> None:
         self.bot = bot
         self.log = getLogger(f"{self.bot.settings.log_name}.LanguageView")
+        self.langs = lang_records
         options = []
-        for lang in lang_records:
+
+        for lang in lang_records.values():
             options.append(disnake.SelectOption(
                 label=lang.role_name,
                 emoji=lang.emoji_repr,
-                value=str(lang.role_id)
+                value=str(lang.role_id),
+                default=lang.present
             ))
 
         super().__init__(
@@ -47,33 +49,45 @@ class LanguageSelector(disnake.ui.StringSelect):
             options=options,
         )
 
-    async def _get_langs(self) -> list[disnake.Role] | None:
-        roles = []
-        for lang_id in self.values:
-            roles.append(utils.get_role(self.bot, int(lang_id)))
-        return roles
+    async def _get_langs(self
+                         ) -> tuple[
+        list[models.MemberLanguage], list[models.MemberLanguage]]:
+        """Return which roles will be modified"""
+        previous_selected = [lang.role_id for lang in
+                             self.langs.values() if lang.present]
+
+        add_roles: list[models.MemberLanguage] = []
+        rm_roles: list[models.MemberLanguage] = []
+
+        sel_values = self.values if self.values else []
+
+        # Populate roles to add
+        for value in sel_values:
+            lang = self.langs.get(int(value))
+            lang.present = True
+            add_roles.append(lang)
+
+        # Populate roles to remove
+        for value in previous_selected:
+            if str(value) not in sel_values:
+                lang = self.langs.get(value)
+                lang.present = False
+                rm_roles.append(lang)
+
+        return add_roles, rm_roles
 
     async def callback(self, inter: disnake.MessageInteraction):
-        roles = await self._get_langs()
-        add_roles = []
-        rm_roles = []
+        add_roles, rm_roles = await self._get_langs()
 
-        for rm_role in inter.user.roles:
-            if rm_role in roles:
-                rm_roles.append(rm_role)
-                await inter.user.remove_roles(rm_role)
+        await inter.user.remove_roles(*[role.role for role in rm_roles])
+        await inter.user.add_roles(*[role.role for role in add_roles])
 
-        if rm_roles:
-            role_names = "\n".join(i.name for i in rm_roles)
-            self.log.info(f"Role Change: `{inter.user}`"
-                          f"\nRemoved:\n```\n[{role_names}]\n```")
+        added = " ".join(role.emoji_repr for role in add_roles)
+        added_msg = f"Added: {added}\n" if add_roles else ""
 
-        for role in roles:
-            if role not in rm_roles:
-                add_roles.append(role)
+        removed = " ".join(role.emoji_repr for role in rm_roles)
+        removed_msg = f"Removed: {removed}\n" if rm_roles else ""
 
-        if add_roles:
-            await inter.user.add_roles(*add_roles)
-            role_names = "\n".join(i.name for i in add_roles)
-            self.log.info(f"Role Change: `{inter.user}`"
-                          f"\nAdded:\n```\n[{role_names}]\n```")
+        msg = f"Role Change: `{inter.user}`\n{added_msg}{removed_msg}"
+
+        self.log.info(msg)

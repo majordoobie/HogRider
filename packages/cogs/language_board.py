@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional, Union
 from logging import getLogger
 from pathlib import Path
@@ -288,6 +289,8 @@ class LanguageBoard(commands.Cog):
         custom_id = f"{inter.author.id}_LANG"
 
         langs = await crud.get_languages(self.bot.pool)
+        langs = await self._get_user_langs(inter.user, langs)
+
         view = LanguageView(self.bot, langs, custom_id)
         self.log.debug(f"Sending `{inter.user}` the language role panel")
 
@@ -298,11 +301,18 @@ class LanguageBoard(commands.Cog):
         def check(select_inter: disnake.MessageInteraction) -> bool:
             return select_inter.component.custom_id == custom_id
 
-        await self.bot.wait_for("dropdown", check=check)
+        try:
+            await self.bot.wait_for("dropdown", check=check, timeout=15)
+        except asyncio.TimeoutError:
+            await inter.edit_original_message(
+                "You took to long to reply...",
+                view=None)
+        else:
+            await inter.edit_original_message(
+                "Done",
+                view=None)
 
-        await inter.edit_original_message(
-            "Done",
-            view=None)
+
 
     @remove_role.autocomplete("language")
     async def language_name_autocmp(
@@ -322,6 +332,27 @@ class LanguageBoard(commands.Cog):
 
         return [lang.role_name for lang in langs if
                 user_input.title() in lang.role_name]
+
+    async def _get_user_langs(self,
+                              member: disnake.Member,
+                              langs: list[models.Language]
+                              ) -> dict[int, models.MemberLanguage]:
+        """Create the list of MemberLanguages to allow the role selector to
+        show which is already selected"""
+
+        member_langs: dict[int, models.MemberLanguage] = {}
+
+        for lang in langs:
+            role = utils.get_role(self.bot, lang.role_id)
+            member_langs[role.id] = models.MemberLanguage(**lang.__dict__,
+                                                          role=role,
+                                                          present=False)
+
+        for role in member.roles:
+            if member_langs.get(role.id):
+                member_langs[role.id].present = True
+
+        return member_langs
 
 
 def setup(bot):
