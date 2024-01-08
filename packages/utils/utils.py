@@ -65,3 +65,19 @@ def get_role(bot: "BotClient", role_name: str | int) -> disnake.Role:
         return guild.get_role(bot.settings.get_role(role_name))
     else:
         return guild.get_role(role_name)
+
+
+async def kick_user(bot: "BotClient", member: disnake.Member) -> None:
+    reason = "Member took too long to interact with introduction channel"
+    await member.kick(reason=reason)
+
+    mod_log = bot.get_channel(
+        bot.settings.get_channel("mod-log"))
+
+    await bot.inter_send(
+        mod_log,
+        title=f"Member has been kicked by `HogRider`",
+        panel=f"**Reason:**\n{reason}",
+        author=member,
+        color=EmbedColor.ERROR
+    )

@@ -10,8 +10,7 @@ from typing import TYPE_CHECKING
 import disnake
 
 from .base_views import BaseView
-from .thread_view import LanguageSelector
-from ..config import BotMode
+from .step2_thread_view import LanguageSelector
 from ..utils import crud, utils
 
 if TYPE_CHECKING:
@@ -70,19 +69,11 @@ class WelcomeView(BaseView):
 
         self.log.debug(f"Created thread {thread.name} {thread.jump_url}.")
 
-        if self.bot.settings.mode == BotMode.DEV_MODE:
-            me = self.bot.get_user(265368254761926667)
-            await thread.send(me.mention, delete_after=5)
-        else:
-            await thread.send(f"<@&{self.bot.settings.get_role('admin')}>",
-                              delete_after=5)
-
         # Add the user then add them to the database so that we can clean up
         # the database after they are removed
         await thread.add_user(inter.user)
         await crud.set_thread_mgr(self.bot.pool, thread.id, inter.user.id,
                                   thread.created_at)
-        await thread.purge(limit=5)
 
         await inter.send("A private thread has been created for you. Please "
                          f"click on the thread and follow the prompts.\n{thread.jump_url}",
@@ -91,9 +82,11 @@ class WelcomeView(BaseView):
 
         records = await crud.get_languages(self.bot.pool)
 
+        self.log.info(f"User `{inter.user}` has been added to "
+                      f"{thread.jump_url} and the language "
+                      f"select panel has been presented to them.")
+
         await thread.send("Welcome. Please select the languages that you "
                           "are proficient in. You will be able to change "
                           f"this later.",
-                          view=LanguageSelector(self.bot, records))
-
-        self.log.info(f"User {inter.user} has been added to {thread.jump_url}")
+                          view=LanguageSelector(self.bot, records, inter.user))
