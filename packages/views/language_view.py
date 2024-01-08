@@ -11,21 +11,24 @@ if TYPE_CHECKING:
 
 class LanguageView(disnake.ui.View):
     def __init__(self, bot: "BotClient",
-                 lang_records: list[models.Language]) -> None:
+                 lang_records: list[models.Language],
+                 custom_id: str) -> None:
         super().__init__(timeout=60 * 5)
         self.bot = bot
-        self.selection = LanguageSelector(bot, lang_records)
+        self.selection = LanguageSelector(bot, lang_records, custom_id)
         self.add_item(self.selection)
         self.log = getLogger(f"{self.bot.settings.log_name}.LanguageView")
 
     async def on_timeout(self) -> None:
         """Clear the panel on timeout"""
+        print("timeout called")
         self.remove_item(self.selection)
 
 
 class LanguageSelector(disnake.ui.StringSelect):
     def __init__(self, bot: "BotClient",
-                 lang_records: list[models.Language]) -> None:
+                 lang_records: list[models.Language],
+                 custom_id: str) -> None:
         self.bot = bot
         self.log = getLogger(f"{self.bot.settings.log_name}.LanguageView")
         options = []
@@ -37,7 +40,7 @@ class LanguageSelector(disnake.ui.StringSelect):
             ))
 
         super().__init__(
-            custom_id="Select Row",
+            custom_id=custom_id,
             placeholder="Choose your languages",
             min_values=0,
             max_values=len(options),
@@ -51,7 +54,6 @@ class LanguageSelector(disnake.ui.StringSelect):
         return roles
 
     async def callback(self, inter: disnake.MessageInteraction):
-        await inter.message.edit("Done.", view=None)
         roles = await self._get_langs()
         add_roles = []
         rm_roles = []
@@ -75,5 +77,3 @@ class LanguageSelector(disnake.ui.StringSelect):
             role_names = "\n".join(i.name for i in add_roles)
             self.log.info(f"Role Change: `{inter.user}`"
                           f"\nAdded:\n```\n[{role_names}]\n```")
-
-        # await inter.response.send_message("Done.", ephemeral=True)
