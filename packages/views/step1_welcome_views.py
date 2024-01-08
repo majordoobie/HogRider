@@ -10,8 +10,7 @@ from typing import TYPE_CHECKING
 import disnake
 
 from .base_views import BaseView
-from .thread_view import LanguageSelector
-from ..config import BotMode
+from .step2_thread_view import LanguageSelector
 from ..utils import crud, utils
 
 if TYPE_CHECKING:
@@ -83,9 +82,11 @@ class WelcomeView(BaseView):
 
         records = await crud.get_languages(self.bot.pool)
 
+        self.log.info(f"User `{inter.user}` has been added to "
+                      f"{thread.jump_url} and the language "
+                      f"select panel has been presented to them.")
+
         await thread.send("Welcome. Please select the languages that you "
                           "are proficient in. You will be able to change "
                           f"this later.",
-                          view=LanguageSelector(self.bot, records))
-
-        self.log.info(f"User {inter.user} has been added to {thread.jump_url}")
+                          view=LanguageSelector(self.bot, records, inter.user))

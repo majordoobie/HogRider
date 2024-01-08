@@ -180,6 +180,9 @@ class EventDriver(commands.Cog):
         if not before.content:
             return
 
+        if before.content == after.content:
+            return
+
         if not self._is_valid(guild_id=before.guild.id,
                               channel_id=before.channel.id,
                               bot_user=before.author

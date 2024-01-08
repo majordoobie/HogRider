@@ -1,10 +1,11 @@
+from logging import getLogger
 from typing import TYPE_CHECKING
 
 import disnake
 
 from packages.config import BotMode
-from packages.utils import crud, models
-from packages.views.admin_review_view import AdminReviewView
+from packages.utils import crud, models, utils
+from packages.views.step3_admin_review import AdminReviewView
 
 if TYPE_CHECKING:
     from bot import BotClient
@@ -12,21 +13,25 @@ if TYPE_CHECKING:
 
 class LanguageSelector(disnake.ui.View):
     def __init__(self, bot: "BotClient",
-                 lang_records: list[models.Language]) -> None:
+                 lang_records: list[models.Language],
+                 member: disnake.Member) -> None:
         super().__init__(timeout=60 * 5)
         self.bot = bot
+        self.log = getLogger(f"{self.bot.settings.log_name}.LanguageSelector")
         self.selection = LanguageDropdown(bot, lang_records)
+        self.member = member
         self.add_item(self.selection)
 
     async def on_timeout(self) -> None:
         """Clear the panel on timeout"""
-        self.remove_item(self.selection)
+        await utils.kick_user(self.bot, self.member)
 
 
 class LanguageDropdown(disnake.ui.StringSelect):
     def __init__(self, bot: "BotClient",
                  lang_records: list[models.Language]) -> None:
         self.bot = bot
+        self.log = getLogger(f"{self.bot.settings.log_name}.LanguageDropDown")
         options = []
         for lang in lang_records:
             options.append(disnake.SelectOption(
@@ -60,16 +65,25 @@ class LanguageDropdown(disnake.ui.StringSelect):
 
     async def callback(self, inter: disnake.MessageInteraction):
 
+        self.log.debug(
+            f"`{inter.user}` has submitted their language selection")
         await inter.message.edit("Thank you.", view=None)
         custom_id = f"{inter.user.id}_IM"
 
         def check(modal_inter: disnake.ModalInteraction) -> bool:
             return modal_inter.custom_id == custom_id
 
-        modal = IntroductionModal(custom_id=custom_id)
+        modal = IntroductionModal(bot=self.bot, custom_id=custom_id)
+        self.log.debug(f"Sending user `{inter.user}` the introduction modal")
         await inter.response.send_modal(modal)
-        self.bot.log.debug(f"Sending user {inter.user} the introduction modal")
+
+        self.log.debug(
+            f"Waiting for `{inter.user}` to submit their introduction modal.")
+
         await self.bot.wait_for("modal_submit", check=check)
+
+        self.log.debug(
+            f"User `{inter.user}` has submitted their introduction modal")
 
         langs = await self._get_langs()
 
@@ -111,11 +125,15 @@ class LanguageDropdown(disnake.ui.StringSelect):
 
         await inter.channel.send(embed=panel[0], view=admin_panel)
 
+        self.log.debug(f"Adding admins and presenting with the "
+                       f"Admin panel for `{inter.channel.jump_url}`")
+
 
 class IntroductionModal(disnake.ui.Modal):
-    def __init__(self, custom_id: str) -> None:
+    def __init__(self, bot: "BotClient", custom_id: str) -> None:
         self.introduction: str = ""
         self.languages: str | None = None
+        self.log = getLogger(f"{bot.settings.log_name}.IntroductionModal")
 
         components = [
             disnake.ui.TextInput(
@@ -141,6 +159,8 @@ class IntroductionModal(disnake.ui.Modal):
                          custom_id=custom_id)
 
     async def callback(self, inter: disnake.ModalInteraction) -> None:
+        self.log.debug(
+            f"`{inter.user}` has submitted their introduction modal")
         self.introduction = inter.text_values.get("Introduction")
         self.languages = inter.text_values.get("Languages")
         await inter.response.edit_message(

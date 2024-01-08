@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 import disnake
 
-from .applicant_more_info import ApplicantMoreInfo
+from .step31_more_info_view import ApplicantMoreInfo
 from .base_views import BaseView
 from ..utils import models, utils
 
@@ -17,19 +17,25 @@ class AdminReviewView(BaseView):
     """
 
     def __init__(self, bot: "BotClient",
-                 user: disnake.Member,
+                 member: disnake.Member,
                  introduction: str,
                  languages: list[models.Language] | None,
                  other_languages: str) -> None:
-        super().__init__(bot, timeout=None)
+        super().__init__(bot, timeout=60 * 15)
         self.bot = bot
-        self.user = user
+        self.member = member
         self.introduction = introduction
         self.languages = languages
         self.other_languages = other_languages
         self.more_info = False
 
         self.log = getLogger(f"{self.bot.settings.log_name}.AdminReview")
+        self.log.debug(f"Populating `AdminReviewView` panel "
+                       f"with a timeout of {60 * 15} seconds")
+
+    async def on_timeout(self) -> None:
+        """Clear the panel on timeout"""
+        await utils.kick_user(self.bot, self.member)
 
     async def interaction_check(self, inter: disnake.Interaction):
         admin_role = self.bot.settings.get_role("admin")
@@ -55,9 +61,9 @@ class AdminReviewView(BaseView):
 
         applicant_role = utils.get_role(self.bot, "applicant")
 
-        await self.user.remove_roles(applicant_role)
-        await self.user.add_roles(*roles, atomic=True)
-        self.log.debug(f"Gave {self.user} {roles}")
+        await self.member.remove_roles(applicant_role)
+        await self.member.add_roles(*roles, atomic=True)
+        self.log.debug(f"Gave {self.member} {roles}")
 
         mod_log = self.bot.get_channel(
             self.bot.settings.get_channel("mod-log"))
@@ -91,23 +97,23 @@ class AdminReviewView(BaseView):
 
         await self.bot.inter_send(
             mod_log,
-            title=f"User {self.user} has been approved by {inter.user}",
+            title=f"User {self.member} has been approved by {inter.user}",
             panel=msg,
-            author=self.user,
+            author=self.member,
             color=utils.EmbedColor.SUCCESS
         )
 
         await self.bot.inter_send(
             general_channel,
-            title=f"Please welcome `{self.user}`!",
+            title=f"Please welcome `{self.member}`!",
             panel=msg,
-            author=self.user,
+            author=self.member,
             color=utils.EmbedColor.SUCCESS
         )
 
         # This will trigger the delete event
-        await inter.channel.remove_user(self.user)
-        self.log.debug(f"Removed {self.user} from the thread")
+        await inter.channel.remove_user(self.member)
+        self.log.debug(f"Removed {self.member} from the thread")
 
     @disnake.ui.button(label="Decline",
                        style=disnake.ButtonStyle.red)
@@ -127,9 +133,9 @@ class AdminReviewView(BaseView):
                           f"{'ban' if modal.ban else 'kick'} for applicant")
 
         if modal.ban:
-            await self.user.ban(reason=modal.reason)
+            await self.member.ban(reason=modal.reason)
         else:
-            await self.user.kick(reason=modal.reason)
+            await self.member.kick(reason=modal.reason)
 
         mod_log = self.bot.get_channel(
             self.bot.settings.get_channel("mod-log"))
@@ -139,7 +145,7 @@ class AdminReviewView(BaseView):
             title=f"Member has been {'banned' if modal.ban else 'kick'} "
                   f"by {inter.user.name}",
             panel=f"**Reason:**\n{modal.reason}",
-            author=self.user,
+            author=self.member,
             color=utils.EmbedColor.ERROR
         )
 
@@ -150,7 +156,7 @@ class AdminReviewView(BaseView):
         self.more_info = True
         await inter.response.defer()
         await inter.send(
-            f"{self.user.mention} could you please provide "
+            f"{self.member.mention} could you please provide "
             f"more information about how you plan on "
             f"using the API")
 
