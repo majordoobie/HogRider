@@ -21,7 +21,7 @@ class AdminReviewView(BaseView):
                  introduction: str,
                  languages: list[models.Language] | None,
                  other_languages: str) -> None:
-        super().__init__(bot, timeout=60 * 15)
+        super().__init__(bot, timeout=60 * 120)
         self.bot = bot
         self.member = member
         self.introduction = introduction
