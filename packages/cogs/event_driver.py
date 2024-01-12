@@ -51,9 +51,13 @@ class EventDriver(commands.Cog):
                 "welcome"):
             return
 
-        user = payload.cached_member if payload.cached_member else None
+        if payload.cached_member:
+            user = self.bot.get_user(payload.member_id).name
+        else:
+            user = payload.member_id
+
         self.bot.log.debug(
-            f"User `{user if user else payload.member_id}` has left the "
+            f"User `{user}` has left the "
             f"welcome thread `{payload.thread}`")
 
         thread = await crud.get_thread_mgr(self.bot.pool, payload.thread.id)
@@ -130,7 +134,7 @@ class EventDriver(commands.Cog):
         if not self._is_valid(guild_id=member.guild.id):
             return
 
-        self.log.debug(f"Member {member} has left")
+        self.log.debug(f"Member `{member}` has left")
 
         timelapse = datetime.now(timezone.utc) - member.joined_at
         years = timelapse.days // 365
@@ -214,7 +218,7 @@ class EventDriver(commands.Cog):
             return
 
         self.log.debug(f"**Message Delete Event:**\n\n"
-                       f"```\n{payload}\n```")
+                       f"```\n{payload.cached_message}\n```")
 
         # Populate with the data that is going to be sent
         send_payload = {}

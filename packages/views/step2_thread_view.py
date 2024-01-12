@@ -1,3 +1,4 @@
+import asyncio
 from logging import getLogger
 from typing import TYPE_CHECKING
 
@@ -10,15 +11,56 @@ from packages.views.step3_admin_review import AdminReviewView
 if TYPE_CHECKING:
     from bot import BotClient
 
+VIEW_TIMEOUT = 60 * 20
+MODAL_TIMEOUT = 60 * 10
+
+
+class IntroductionModal(disnake.ui.Modal):
+    def __init__(self, bot: "BotClient", custom_id: str) -> None:
+        self.introduction: str = ""
+        self.languages: str | None = None
+        self.log = getLogger(f"{bot.settings.log_name}.IntroductionModal")
+
+        components = [
+            disnake.ui.TextInput(
+                label="Intro",
+                placeholder="Tell us what you plan to do with the CoC API",
+                custom_id="Introduction",
+                style=disnake.TextInputStyle.paragraph,
+                min_length=32,
+                max_length=1024,
+                required=True
+            ),
+            disnake.ui.TextInput(
+                label="[Optional] Other Languages",
+                placeholder="Other languages we did not list",
+                custom_id="Languages",
+                style=disnake.TextInputStyle.short,
+                min_length=0,
+                max_length=128,
+                required=False
+            ),
+        ]
+        super().__init__(title="Introduction", components=components,
+                         custom_id=custom_id)
+
+    async def callback(self, inter: disnake.ModalInteraction) -> None:
+        self.log.debug(
+            f"`{inter.user}` has submitted their introduction modal")
+        self.introduction = inter.text_values.get("Introduction")
+        self.languages = inter.text_values.get("Languages")
+        await inter.response.edit_message(
+            "Thank you. An admin will be with you shortly.")
+
 
 class LanguageSelector(disnake.ui.View):
     def __init__(self, bot: "BotClient",
                  lang_records: list[models.Language],
                  member: disnake.Member) -> None:
-        super().__init__(timeout=60 * 5)
+        super().__init__(timeout=VIEW_TIMEOUT)
         self.bot = bot
         self.log = getLogger(f"{self.bot.settings.log_name}.LanguageSelector")
-        self.selection = LanguageDropdown(bot, lang_records)
+        self.selection = LanguageDropdown(self, bot, lang_records)
         self.member = member
         self.add_item(self.selection)
 
@@ -28,8 +70,11 @@ class LanguageSelector(disnake.ui.View):
 
 
 class LanguageDropdown(disnake.ui.StringSelect):
-    def __init__(self, bot: "BotClient",
+    def __init__(self,
+                 view: disnake.ui.View,
+                 bot: "BotClient",
                  lang_records: list[models.Language]) -> None:
+        self.view_instance = view
         self.bot = bot
         self.log = getLogger(f"{self.bot.settings.log_name}.LanguageDropDown")
         options = []
@@ -55,53 +100,25 @@ class LanguageDropdown(disnake.ui.StringSelect):
             options=options,
         )
 
-    async def _get_langs(self) -> list[models.Language] | None:
-        roles = []
-        languages = await crud.get_languages(self.bot.pool)
-        for lang in languages:
-            if str(lang.role_id) in self.values:
-                roles.append(lang)
-        return roles
-
     async def callback(self, inter: disnake.MessageInteraction):
+        # Stops the views timeout
+        self.view_instance.stop()
 
-        self.log.debug(
-            f"`{inter.user}` has submitted their language selection")
+        self.log.debug(f"`{inter.user}` has submitted "
+                       f"their language selection")
         await inter.message.edit("Thank you.", view=None)
+
         custom_id = f"{inter.user.id}_IM"
-
-        def check(modal_inter: disnake.ModalInteraction) -> bool:
-            return modal_inter.custom_id == custom_id
-
         modal = IntroductionModal(bot=self.bot, custom_id=custom_id)
+
         self.log.debug(f"Sending user `{inter.user}` the introduction modal")
         await inter.response.send_modal(modal)
 
-        self.log.debug(
-            f"Waiting for `{inter.user}` to submit their introduction modal.")
-
-        await self.bot.wait_for("modal_submit", check=check)
-
-        self.log.debug(
-            f"User `{inter.user}` has submitted their introduction modal")
+        if await self._wait_for_modal(custom_id, inter) is False:
+            return
 
         langs = await self._get_langs()
-
-        lang_repr = ""
-        for lang in langs:
-            lang_repr += f"{lang.emoji_repr}\n"
-
-        other_langs: str | None = None
-        if modal.languages != "":
-            other_langs = f"\n\n**Other Languages:**\n```{modal.languages}```"
-
-        msg = (
-            "**Introduction:**\n"
-            f"{modal.introduction}\n\n"
-            f"**Languages:**\n"
-            f"{lang_repr}"
-            f"{other_langs if other_langs else ''}"
-        )
+        msg = self._get_msg_payload(modal, langs)
 
         admin_panel = AdminReviewView(self.bot,
                                       inter.user,
@@ -128,40 +145,58 @@ class LanguageDropdown(disnake.ui.StringSelect):
         self.log.debug(f"Adding admins and presenting with the "
                        f"Admin panel for `{inter.channel.jump_url}`")
 
+    async def _get_langs(self) -> list[models.Language] | None:
+        roles = []
+        languages = await crud.get_languages(self.bot.pool)
+        for lang in languages:
+            if str(lang.role_id) in self.values:
+                roles.append(lang)
+        return roles
 
-class IntroductionModal(disnake.ui.Modal):
-    def __init__(self, bot: "BotClient", custom_id: str) -> None:
-        self.introduction: str = ""
-        self.languages: str | None = None
-        self.log = getLogger(f"{bot.settings.log_name}.IntroductionModal")
+    async def _wait_for_modal(self,
+                              custom_id: str,
+                              inter: disnake.MessageInteraction) -> bool:
 
-        components = [
-            disnake.ui.TextInput(
-                label="Intro",
-                placeholder="Tell us what you plan to do with the CoC API",
-                custom_id="Introduction",
-                style=disnake.TextInputStyle.paragraph,
-                min_length=15,
-                max_length=1024,
-                required=True
-            ),
-            disnake.ui.TextInput(
-                label="[Optional] Other Languages",
-                placeholder="Other languages we did not list",
-                custom_id="Languages",
-                style=disnake.TextInputStyle.short,
-                min_length=0,
-                max_length=128,
-                required=False
-            ),
-        ]
-        super().__init__(title="Introduction", components=components,
-                         custom_id=custom_id)
+        success_submit = True
 
-    async def callback(self, inter: disnake.ModalInteraction) -> None:
-        self.log.debug(
-            f"`{inter.user}` has submitted their introduction modal")
-        self.introduction = inter.text_values.get("Introduction")
-        self.languages = inter.text_values.get("Languages")
-        await inter.response.edit_message(
-            "Thank you. An admin will be with you shortly.")
+        def check(modal_inter: disnake.ModalInteraction) -> bool:
+            return modal_inter.custom_id == custom_id
+
+        self.log.debug(f"Waiting for `{inter.user}` "
+                       f"to submit their introduction modal.")
+
+        try:
+            await self.bot.wait_for("modal_submit",
+                                    check=check,
+                                    timeout=MODAL_TIMEOUT)
+            self.log.debug(f"User `{inter.user}` has "
+                           f"submitted their introduction modal")
+
+        except asyncio.TimeoutError:
+            self.log.debug(
+                f"Timeout: Stopping the `{self.view_instance.__class__.__name__}` view")
+            self.view_instance.stop()
+            self.log.debug(f"Kicking `{inter.user}` for taking too long")
+            await utils.kick_user(self.bot, self.member)
+            success_submit = False
+
+        return success_submit
+
+    @staticmethod
+    def _get_msg_payload(modal: IntroductionModal,
+                         langs: list[models.Language]) -> str:
+        lang_repr = ""
+        for lang in langs:
+            lang_repr += f"{lang.emoji_repr}\n"
+
+        other_langs: str | None = None
+        if modal.languages != "":
+            other_langs = f"\n\n**Other Languages:**\n```{modal.languages}```"
+
+        return (
+            "**Introduction:**\n"
+            f"{modal.introduction}\n\n"
+            f"**Languages:**\n"
+            f"{lang_repr}"
+            f"{other_langs if other_langs else ''}"
+        )
