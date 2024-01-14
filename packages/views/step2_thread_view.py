@@ -6,12 +6,13 @@ import disnake
 
 from packages.config import BotMode
 from packages.utils import crud, models, utils
+from packages.views.base_views import BaseView
 from packages.views.step3_admin_review import AdminReviewView
 
 if TYPE_CHECKING:
     from bot import BotClient
 
-VIEW_TIMEOUT = 60 * 20
+VIEW_TIMEOUT = 60 * 15
 MODAL_TIMEOUT = 60 * 10
 
 
@@ -19,7 +20,8 @@ class IntroductionModal(disnake.ui.Modal):
     def __init__(self, bot: "BotClient", custom_id: str) -> None:
         self.introduction: str = ""
         self.languages: str | None = None
-        self.log = getLogger(f"{bot.settings.log_name}.IntroductionModal")
+        self.cls_name = self.__class__.__name__
+        self.log = getLogger(f"{bot.settings.log_name}.{self.cls_name}")
 
         components = [
             disnake.ui.TextInput(
@@ -45,27 +47,29 @@ class IntroductionModal(disnake.ui.Modal):
                          custom_id=custom_id)
 
     async def callback(self, inter: disnake.ModalInteraction) -> None:
-        self.log.debug(
-            f"`{inter.user}` has submitted their introduction modal")
+        self.log.info(f"`{inter.user} submitted `{self.cls_name}`")
         self.introduction = inter.text_values.get("Introduction")
         self.languages = inter.text_values.get("Languages")
+
         await inter.response.edit_message(
             "Thank you. An admin will be with you shortly.")
 
 
-class LanguageSelector(disnake.ui.View):
+class LanguageSelector(BaseView):
     def __init__(self, bot: "BotClient",
                  lang_records: list[models.Language],
                  member: disnake.Member) -> None:
-        super().__init__(timeout=VIEW_TIMEOUT)
+        super().__init__(bot, timeout=VIEW_TIMEOUT)
         self.bot = bot
-        self.log = getLogger(f"{self.bot.settings.log_name}.LanguageSelector")
+        self.cls_name = self.__class__.__name__
+        self.log = getLogger(f"{self.bot.settings.log_name}.{self.cls_name}")
         self.selection = LanguageDropdown(self, bot, lang_records)
         self.member = member
         self.add_item(self.selection)
 
     async def on_timeout(self) -> None:
         """Clear the panel on timeout"""
+        self.log.warning(f"`{self.member}` timed out on `{self.cls_name}`")
         await utils.kick_user(self.bot, self.member)
 
 
@@ -76,7 +80,8 @@ class LanguageDropdown(disnake.ui.StringSelect):
                  lang_records: list[models.Language]) -> None:
         self.view_instance = view
         self.bot = bot
-        self.log = getLogger(f"{self.bot.settings.log_name}.LanguageDropDown")
+        self.cls_name = self.__class__.__name__
+        self.log = getLogger(f"{self.bot.settings.log_name}.{self.cls_name}")
         options = []
         for lang in lang_records:
             options.append(disnake.SelectOption(
@@ -104,17 +109,16 @@ class LanguageDropdown(disnake.ui.StringSelect):
         # Stops the views timeout
         self.view_instance.stop()
 
-        self.log.debug(f"`{inter.user}` has submitted "
-                       f"their language selection")
+        self.log.info(f"`{inter.user}` has submitted `{self.cls_name}`")
         await inter.message.edit("Thank you.", view=None)
 
         custom_id = f"{inter.user.id}_IM"
         modal = IntroductionModal(bot=self.bot, custom_id=custom_id)
 
-        self.log.debug(f"Sending user `{inter.user}` the introduction modal")
+        self.log.debug(f"Sending `{inter.user}` the `{modal.cls_name}`")
         await inter.response.send_modal(modal)
 
-        if await self._wait_for_modal(custom_id, inter) is False:
+        if await self._wait_for_modal(modal, custom_id, inter) is False:
             return
 
         langs = await self._get_langs()
@@ -132,6 +136,7 @@ class LanguageDropdown(disnake.ui.StringSelect):
                                           flatten_list=True,
                                           return_embed=True)
 
+        self.log.info(f"Adding admins to {inter.channel.jump_url}")
         if self.bot.settings.mode == BotMode.DEV_MODE:
             me = self.bot.get_user(265368254761926667)
             await inter.channel.send(me.mention, delete_after=5)
@@ -141,9 +146,8 @@ class LanguageDropdown(disnake.ui.StringSelect):
                 delete_after=5)
 
         await inter.channel.send(embed=panel[0], view=admin_panel)
-
-        self.log.debug(f"Adding admins and presenting with the "
-                       f"Admin panel for `{inter.channel.jump_url}`")
+        self.log.debug(f"Sending `{admin_panel.cls_name}` "
+                       f"to {inter.channel.jump_url}")
 
     async def _get_langs(self) -> list[models.Language] | None:
         roles = []
@@ -154,6 +158,7 @@ class LanguageDropdown(disnake.ui.StringSelect):
         return roles
 
     async def _wait_for_modal(self,
+                              modal: IntroductionModal,
                               custom_id: str,
                               inter: disnake.MessageInteraction) -> bool:
 
@@ -162,22 +167,16 @@ class LanguageDropdown(disnake.ui.StringSelect):
         def check(modal_inter: disnake.ModalInteraction) -> bool:
             return modal_inter.custom_id == custom_id
 
-        self.log.debug(f"Waiting for `{inter.user}` "
-                       f"to submit their introduction modal.")
-
         try:
             await self.bot.wait_for("modal_submit",
                                     check=check,
                                     timeout=MODAL_TIMEOUT)
-            self.log.debug(f"User `{inter.user}` has "
-                           f"submitted their introduction modal")
+            self.log.info(f"`{inter.user}` has submitted `{modal.cls_name}`")
 
         except asyncio.TimeoutError:
-            self.log.debug(
-                f"Timeout: Stopping the `{self.view_instance.__class__.__name__}` view")
+            self.log.warning(f"`{inter.user}` timed out on`{modal.cls_name}`")
             self.view_instance.stop()
-            self.log.debug(f"Kicking `{inter.user}` for taking too long")
-            await utils.kick_user(self.bot, self.member)
+            await utils.kick_user(self.bot, inter.user)
             success_submit = False
 
         return success_submit

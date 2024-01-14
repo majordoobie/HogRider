@@ -16,10 +16,11 @@ class BaseView(disnake.ui.View):
     def __init__(self, bot: "BotClient", *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.bot = bot
-        self.log = getLogger(f"{self.bot.settings.log_name}.base_view")
+        self.cls_name = self.__class__.__name__
+        self.log = getLogger(f"{self.bot.settings.log_name}.{self.cls_name}")
 
     async def on_timeout(self) -> None:
-        self.log.warning("View has timed out", exc_info=True)
+        self.log.warning("View has timed out")
 
     async def on_error(self,
                        error: Exception,
@@ -33,4 +34,3 @@ class BaseView(disnake.ui.View):
 
         self.log.error(
             f"**ui.View Error**\n\nItem: {item}\n\n```\n{err_msg}\n```")
-
