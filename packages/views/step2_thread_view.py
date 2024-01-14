@@ -176,7 +176,7 @@ class LanguageDropdown(disnake.ui.StringSelect):
         except asyncio.TimeoutError:
             self.log.warning(f"`{inter.user}` timed out on`{modal.cls_name}`")
             self.view_instance.stop()
-            await utils.kick_user(self.bot, self.member)
+            await utils.kick_user(self.bot, inter.user)
             success_submit = False
 
         return success_submit
