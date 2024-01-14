@@ -30,7 +30,7 @@ class AdminReviewView(BaseView):
         self.other_languages = other_languages
         self.more_info = False
 
-        self.log = getLogger(f"{self.bot.settings.log_name}.{self.c}")
+        self.log = getLogger(f"{self.bot.settings.log_name}.{self.cls_name}")
 
     async def interaction_check(self, inter: disnake.Interaction):
         admin_role = self.bot.settings.get_role("admin")
