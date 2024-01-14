@@ -217,8 +217,9 @@ class EventDriver(commands.Cog):
                               channel_id=payload.channel_id):
             return
 
+        msg = payload.cached_message.content if payload.cached_message else "No content"
         self.log.debug(f"**Message Delete Event:**\n\n"
-                       f"```\n{payload.cached_message}\n```")
+                       f"```\n{msg}\n```")
 
         # Populate with the data that is going to be sent
         send_payload = {}

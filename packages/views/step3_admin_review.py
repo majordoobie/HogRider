@@ -21,7 +21,8 @@ class AdminReviewView(BaseView):
                  introduction: str,
                  languages: list[models.Language] | None,
                  other_languages: str) -> None:
-        super().__init__(bot, timeout=60 * 120)
+        super().__init__(bot, timeout=None)
+        self.cls_name = self.__class__.__name__
         self.bot = bot
         self.member = member
         self.introduction = introduction
@@ -29,13 +30,7 @@ class AdminReviewView(BaseView):
         self.other_languages = other_languages
         self.more_info = False
 
-        self.log = getLogger(f"{self.bot.settings.log_name}.AdminReview")
-        self.log.debug(f"Populating `AdminReviewView` panel "
-                       f"with a timeout of {60 * 15} seconds")
-
-    async def on_timeout(self) -> None:
-        """Clear the panel on timeout"""
-        await utils.kick_user(self.bot, self.member)
+        self.log = getLogger(f"{self.bot.settings.log_name}.{self.c}")
 
     async def interaction_check(self, inter: disnake.Interaction):
         admin_role = self.bot.settings.get_role("admin")
@@ -52,7 +47,6 @@ class AdminReviewView(BaseView):
     async def accept(self, button: disnake.ui.Button,
                      inter: disnake.MessageInteraction):
         await inter.response.defer()
-        # await inter.send("Processing...")
 
         roles = [utils.get_role(self.bot, lang.role_id) for lang in
                  self.languages]
