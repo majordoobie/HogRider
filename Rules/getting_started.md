@@ -34,15 +34,4 @@ These CoC API libraries, or "wrappers" allow for quicker application creation.
 This is because you're not wasting time creating your wrapper. 
 Another benefit of mature wrappers is the ability to abstract the HTTP get request patterns and model the data 
 returned into an object that is better suited for the language used. 
-
-### Some popular wrappers by language. <a name="1.2"></a>
-#### Click on the language to get more information about it.
-| Language                                                   | Link                                                                 | 
-|------------------------------------------------------------|----------------------------------------------------------------------| 
-| [Python](getting_started_subdir/getting_started_python.md) | [coc.py](https://github.com/mathsman5133/coc.py)                    | 
-| C#                                                         | [CocAPI](https://github.com/devhl-labs/CocApi)                       |
-| JS                                                         | [clashofclans.js](https://github.com/clashperk/clashofclans.js)      |
-| Ruby                                                       | [clash_of_clans_api](https://github.com/expeehaa/clash_of_clans_api) |
-| Ruby                                                       | [CocRB](https://github.com/Lycoon/clash-api)                         |
-| Java                                                       | [clash-api](https://github.com/Lycoon/clash-api)                     |
-
+You can find a list (without guarantee of completeness) [CoC API wrapper](https://coc-libs.vercel.app/)
