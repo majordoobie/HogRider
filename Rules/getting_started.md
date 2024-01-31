@@ -15,9 +15,9 @@ and then deploy your application to a server that has an IP of B. Then your requ
 You will need to create a token for each public IP you are interacting with the API. 
 
 #### Querying without a JWT token
-![With not JWT](images/img_getting_started/01_curl_no_jwt.png)
+![With not JWT](images/img_getting_started/01_curl_wno_jwt.png)
 #### Querying with a JWT token
-![img.png](images/img_getting_started/02_curl_with_jwt.png)
+![img.png](images/img_getting_started/02_curl_w_jwt.png)
 
 ```bash
 TOKEN=$(cat token.txt); curl --header "Authorization: Bearer $TOKEN" https://api.clashofclans.com/v1/players/%23YRG80Q2C
