@@ -19,6 +19,10 @@ You will need to create a token for each public IP you are interacting with the 
 #### Querying with a JWT token
 ![img.png](images/img_getting_started/02_curl_with_jwt.png)
 
+```bash
+TOKEN=$(cat token.txt); curl --header "Authorization: Bearer $TOKEN" https://api.clashofclans.com/v1/players/%23YRG80Q2C
+```
+
 The above two images showcase what will happen if you skip creating a JWT and attempt to request data from the 
 CoC API endpoint. You can find more examples on how to manually curl the API on the 
 [CoC API documentation](https://developer.clashofclans.com/#/documentation) page.
