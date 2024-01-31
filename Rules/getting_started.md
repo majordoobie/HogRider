@@ -18,11 +18,11 @@ Keep in mind that the [JSON Web Token](https://jwt.io/introduction) you create f
 you specify. This means that if your IP changes you will
 receive `{"reason":"accessDenied","message":"Invalid authorization"}`
 
-#### Querying without a JWT token
+#### Querying without a JSON Web Token
 
 ![With not JWT](images/img_getting_started/01_curl_wno_jwt.png)
 
-#### Querying with a JWT token
+#### Querying with a valid JSON Web Token
 
 ![img.png](images/img_getting_started/02_curl_w_jwt.png)
 
