@@ -186,7 +186,7 @@ class LanguageDropdown(disnake.ui.StringSelect):
                          langs: list[models.Language]) -> str:
         lang_repr = ""
         for lang in langs:
-            lang_repr += f"{lang.emoji_repr}\n"
+            lang_repr += f"{lang.emoji_repr}  "
 
         other_langs: str | None = None
         if modal.languages != "":

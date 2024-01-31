@@ -67,13 +67,13 @@ class General(commands.Cog):
         )
 
     @commands.slash_command(guild_ids=guild_ids())
-    async def link_api(self, inter: disnake.ApplicationCommandInteraction):
+    async def getting_started(self, inter: disnake.ApplicationCommandInteraction):
         """
-        Responds with a link to a Discord message on the Discord Link API (by TubaKid)
+        Respond with a link to the getting started markdown
         """
         await self.bot.inter_send(
             inter,
-            "https://discord.com/channels/566451504332931073/681617252814159904/936126372873650237"
+            "https://github.com/majordoobie/HogRider/blob/main/Rules/getting_started.md"
         )
 
     @commands.slash_command(guild_ids=guild_ids())
