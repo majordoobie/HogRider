@@ -74,7 +74,7 @@ class AdminReviewView(BaseView):
 
         lang_repr = ""
         for lang in self.languages:
-            lang_repr += f"{lang.emoji_repr}\n"
+            lang_repr += f"{lang.emoji_repr} "
 
         other_langs: str | None = None
         if self.other_languages != "":
