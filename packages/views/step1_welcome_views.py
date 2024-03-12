@@ -27,7 +27,7 @@ class WelcomeView(BaseView):
     def __init__(self, bot: "BotClient"):
         super().__init__(bot, timeout=None)
         self.bot = bot
-        self.log = getLogger(f"{self.bot.settings.log_name}.WelcomeView")
+        self.log = getLogger(f"{self.bot.settings.log_name}.{self.__class__.__name__}")
 
     async def interaction_check(self, inter: disnake.Interaction):
         dev_role = self.bot.settings.get_role("developer")
@@ -51,14 +51,13 @@ class WelcomeView(BaseView):
                        custom_id="persistent_example:green")
     async def introduce(self, button: disnake.ui.Button,
                         inter: disnake.MessageInteraction):
+        self.log.warning(f"`{inter.author}` clicked on `introduction`")
+
         await inter.response.defer()
 
         # Give the user the applicant role
         applicant_role = utils.get_role(self.bot, "applicant")
         await inter.user.add_roles(applicant_role)
-
-        self.log.info(f"{inter.author.name} pressed the introduce button. "
-                      f"Creating welcome thread.")
 
         thread: disnake.Thread = await inter.channel.create_thread(
             name=f"Welcome {inter.user.name}",

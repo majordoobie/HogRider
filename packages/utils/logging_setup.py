@@ -94,7 +94,7 @@ class DiscordWebhookHandler(logging.Handler):
             logger = logging.getLogger('root')
             logger.error('Could not initialize web logger', exc_info=error)
 
-    def discord_log(self, record):
+    def discord_log(self, record: logging.LogRecord):
         colors = {
             10: 0xCCFFFF,  # Debug Cyan | Automatic tasks will go here
             20: 0x0B5394,  # Info  Blue | Changes by automatic tasks go here
@@ -113,7 +113,7 @@ class DiscordWebhookHandler(logging.Handler):
         embeds = []
         for msg in msgs:
             embeds.append(
-                Embed(title=f"{record.levelname} | {record.name}",
+                Embed(title=f"{record.levelname} | {record.pathname.split('/')[-1]}:{record.lineno}\n{record.name}",
                       description=f"{msg}",
                       color=colors[record.levelno]
                       )

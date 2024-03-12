@@ -244,11 +244,11 @@ class EventDriver(commands.Cog):
             # if not cached, see if the message is in the db
             message = await crud.get_message(self.bot.pool, payload.message_id)
 
-            user = self.bot.get_user(message.user_id)
-            if user.bot:
-                return
-
             if message:
+                user = self.bot.get_user(message.user_id)
+                if user.bot:
+                    return
+
                 send_payload["author"] = self.bot.get_user(message.user_id)
                 send_payload["title"] = (
                     f"Message deleted in <#{message.channel_id}>")

@@ -18,6 +18,8 @@ MODAL_TIMEOUT = 60 * 10
 
 class IntroductionModal(disnake.ui.Modal):
     def __init__(self, bot: "BotClient", custom_id: str) -> None:
+        #TODO Add the primary language here
+
         self.introduction: str = ""
         self.languages: str | None = None
         self.cls_name = self.__class__.__name__
@@ -47,7 +49,8 @@ class IntroductionModal(disnake.ui.Modal):
                          custom_id=custom_id)
 
     async def callback(self, inter: disnake.ModalInteraction) -> None:
-        self.log.info(f"`{inter.user} submitted `{self.cls_name}`")
+        self.log.warning(f"`{inter.user}` submitted `{self.cls_name}`")
+
         self.introduction = inter.text_values.get("Introduction")
         self.languages = inter.text_values.get("Languages")
 
@@ -109,13 +112,13 @@ class LanguageDropdown(disnake.ui.StringSelect):
         # Stops the views timeout
         self.view_instance.stop()
 
-        self.log.info(f"`{inter.user}` has submitted `{self.cls_name}`")
+        self.log.warning(f"`{inter.user}` has submitted `{self.cls_name}`")
         await inter.message.edit("Thank you.", view=None)
 
         custom_id = f"{inter.user.id}_IM"
         modal = IntroductionModal(bot=self.bot, custom_id=custom_id)
 
-        self.log.debug(f"Sending `{inter.user}` the `{modal.cls_name}`")
+        self.log.warning(f"Sending `{inter.user}` the `{modal.cls_name}`")
         await inter.response.send_modal(modal)
 
         if await self._wait_for_modal(modal, custom_id, inter) is False:
@@ -146,8 +149,8 @@ class LanguageDropdown(disnake.ui.StringSelect):
                 delete_after=5)
 
         await inter.channel.send(embed=panel[0], view=admin_panel)
-        self.log.debug(f"Sending `{admin_panel.cls_name}` "
-                       f"to {inter.channel.jump_url}")
+        self.log.warning(f"Sending `{admin_panel.cls_name}` "
+                         f"to {inter.channel.jump_url}")
 
     async def _get_langs(self) -> list[models.Language] | None:
         roles = []

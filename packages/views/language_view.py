@@ -29,9 +29,11 @@ class LanguageSelector(disnake.ui.StringSelect):
                  lang_records: dict[int, models.MemberLanguage],
                  custom_id: str) -> None:
         self.bot = bot
-        self.log = getLogger(f"{self.bot.settings.log_name}.LanguageView")
+        self.log = getLogger(f"{self.bot.settings.log_name}.{self.__class__.__name__}")
         self.langs = lang_records
         options = []
+
+        self.log.debug("Logging example")
 
         for lang in lang_records.values():
             options.append(disnake.SelectOption(

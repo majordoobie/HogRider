@@ -42,10 +42,15 @@ class AdminReviewView(BaseView):
 
         return True
 
+    def log_press(self, inter: disnake.MessageInteraction, button: str) -> str:
+        return f"`{inter.user}` clicked on `{button}` for `{self.member}`"
+
     @disnake.ui.button(label="Accept",
                        style=disnake.ButtonStyle.green)
     async def accept(self, button: disnake.ui.Button,
                      inter: disnake.MessageInteraction):
+
+        self.log.warning(self.log_press(inter, "Accept"))
         await inter.response.defer()
 
         roles = [utils.get_role(self.bot, lang.role_id) for lang in
@@ -113,6 +118,8 @@ class AdminReviewView(BaseView):
                        style=disnake.ButtonStyle.red)
     async def decline(self, button: disnake.ui.Button,
                       inter: disnake.MessageInteraction):
+        self.log.warning(self.log_press(inter, "Decline"))
+
         custom_id = f"{inter.user.id}_IM"
 
         def check(modal_inter: disnake.ModalInteraction) -> bool:
@@ -120,11 +127,11 @@ class AdminReviewView(BaseView):
 
         modal = DeclineModal(custom_id=custom_id)
         await inter.response.send_modal(modal)
-        self.bot.log.debug(f"Sending admin {inter.user} the decline modal")
+
         await self.bot.wait_for("modal_submit", check=check)
 
-        self.bot.log.info(f"{inter.user} has initiated a "
-                          f"{'ban' if modal.ban else 'kick'} for applicant")
+        self.bot.log.warning(f"`{inter.user}` has initiated a "
+                             f"{'ban' if modal.ban else 'kick'} for applicant")
 
         if modal.ban:
             await self.member.ban(reason=modal.reason)
@@ -147,12 +154,26 @@ class AdminReviewView(BaseView):
                        style=disnake.ButtonStyle.blurple)
     async def more_info(self, button: disnake.ui.Button,
                         inter: disnake.MessageInteraction):
+        self.log.warning(self.log_press(inter, "More Info"))
         self.more_info = True
         await inter.response.defer()
         await inter.send(
             f"{self.member.mention} could you please provide "
             f"more information about how you plan on "
             f"using the API")
+
+    @disnake.ui.button(label="Learning Server",
+                       style=disnake.ButtonStyle.blurple)
+    async def learning_server(self, button: disnake.ui.Button,
+                              inter: disnake.MessageInteraction):
+
+        self.log.warning(self.log_press(inter, "Learning Server"))
+        self.more_info = True
+        await inter.response.defer()
+        await inter.send(
+            f"Hi, {self.member.mention}! This server is mainly about the APIs Supercell provides "
+            f"about their games. While requesting general coding help is allowed, "
+            f"it's not the main purpose of the server. What experience do you have with coding?")
 
     async def _get_introduction(self, bot: "BotClient",
                                 inter: disnake.MessageInteraction,
