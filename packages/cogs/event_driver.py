@@ -214,7 +214,8 @@ class EventDriver(commands.Cog):
         Display in the logs what message was deleted and by who.
         """
         if not self._is_valid(guild_id=payload.guild_id,
-                              channel_id=payload.channel_id):
+                              channel_id=payload.channel_id,
+                              bot_user=payload.cached_message.author if payload.cached_message else None):
             return
 
         msg = payload.cached_message.content if payload.cached_message else "No content"
