@@ -8,6 +8,7 @@ from packages.config import BotMode
 from packages.utils import crud, models, utils
 from packages.views.base_views import BaseView
 from packages.views.step3_admin_review import AdminReviewView
+from packages.views.step3_primary_lang import PrimaryLanguageView
 
 if TYPE_CHECKING:
     from bot import BotClient
@@ -18,7 +19,6 @@ MODAL_TIMEOUT = 60 * 10
 
 class IntroductionModal(disnake.ui.Modal):
     def __init__(self, bot: "BotClient", custom_id: str) -> None:
-        #TODO Add the primary language here
 
         self.introduction: str = ""
         self.languages: str | None = None
@@ -61,9 +61,13 @@ class IntroductionModal(disnake.ui.Modal):
 class LanguageSelector(BaseView):
     def __init__(self, bot: "BotClient",
                  lang_records: list[models.Language],
-                 member: disnake.Member) -> None:
-        super().__init__(bot, timeout=VIEW_TIMEOUT)
+                 member: disnake.Member,
+                 custom_id: str) -> None:
+
+        super().__init__(bot, timeout=VIEW_TIMEOUT, custom_id=custom_id)
+
         self.bot = bot
+        self.langs: list[models.Language] | None = None
         self.cls_name = self.__class__.__name__
         self.log = getLogger(f"{self.bot.settings.log_name}.{self.cls_name}")
         self.selection = LanguageDropdown(self, bot, lang_records)
@@ -85,6 +89,7 @@ class LanguageDropdown(disnake.ui.StringSelect):
         self.bot = bot
         self.cls_name = self.__class__.__name__
         self.log = getLogger(f"{self.bot.settings.log_name}.{self.cls_name}")
+
         options = []
         for lang in lang_records:
             options.append(disnake.SelectOption(
@@ -109,14 +114,21 @@ class LanguageDropdown(disnake.ui.StringSelect):
         )
 
     async def callback(self, inter: disnake.MessageInteraction):
-        # Stops the views timeout
-        self.view_instance.stop()
-
         self.log.warning(f"`{inter.user}` has submitted `{self.cls_name}`")
-        await inter.message.edit("Thank you.", view=None)
+        print("submitted")
+
+        # Stops the views timeout
+        self.view.langs = await self._get_langs()
+        await inter.response.send_message("Tanks")
+        self.view.stop()
+        return
+
+        primary_language = PrimaryLanguageView(self.bot, langs, inter.user)
+        await inter.message.edit("Select", view=primary_language)
+        print(primary_language)
 
         custom_id = f"{inter.user.id}_IM"
-        modal = IntroductionModal(bot=self.bot, custom_id=custom_id)
+        modal = IntroductionModal(bot=self.bot,  custom_id=custom_id)
 
         self.log.warning(f"Sending `{inter.user}` the `{modal.cls_name}`")
         await inter.response.send_modal(modal)
@@ -124,7 +136,6 @@ class LanguageDropdown(disnake.ui.StringSelect):
         if await self._wait_for_modal(modal, custom_id, inter) is False:
             return
 
-        langs = await self._get_langs()
         msg = self._get_msg_payload(modal, langs)
 
         admin_panel = AdminReviewView(self.bot,

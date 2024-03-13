@@ -4,17 +4,19 @@ This file will handle the initial interaction with the introduction
 button by creating a new thread for the user. Further interaction
 inside the thread happens elsewhere.
 """
+import asyncio
 from logging import getLogger
 from typing import TYPE_CHECKING
 
 import disnake
 
 from .base_views import BaseView
-from .step2_thread_view import LanguageSelector
+from .onboard_mgr import OnboardMgr
 from ..utils import crud, utils
 
 if TYPE_CHECKING:
     from bot import BotClient
+
 
 
 class WelcomeView(BaseView):
@@ -79,13 +81,6 @@ class WelcomeView(BaseView):
                          ephemeral=True,
                          delete_after=60 * 5)
 
-        records = await crud.get_languages(self.bot.pool)
+        await OnboardMgr(self.bot, thread, inter.user).on_board()
 
-        self.log.info(f"User `{inter.user}` has been added to "
-                      f"{thread.jump_url} and the language "
-                      f"select panel has been presented to them.")
 
-        await thread.send("Welcome. Please select the languages that you "
-                          "are proficient in. You will be able to change "
-                          f"this later.",
-                          view=LanguageSelector(self.bot, records, inter.user))
