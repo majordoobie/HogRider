@@ -1,3 +1,7 @@
+"""
+This view is used for users that use the slash command to modify their languages
+"""
+
 from logging import getLogger
 from typing import TYPE_CHECKING
 

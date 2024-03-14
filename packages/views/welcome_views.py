@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from bot import BotClient
 
 
-
 class WelcomeView(BaseView):
     """
     Class is a persistent listener with the introduce button. Whenever
@@ -76,11 +75,4 @@ class WelcomeView(BaseView):
         await crud.set_thread_mgr(self.bot.pool, thread.id, inter.user.id,
                                   thread.created_at)
 
-        await inter.send("A private thread has been created for you. Please "
-                         f"click on the thread and follow the prompts.\n{thread.jump_url}",
-                         ephemeral=True,
-                         delete_after=60 * 5)
-
-        await OnboardMgr(self.bot, thread, inter.user).on_board()
-
-
+        await OnboardMgr(self.bot, thread, inter, inter.user).on_board()
