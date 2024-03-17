@@ -30,6 +30,10 @@ class AdminReviewView(BaseView):
         self.other_languages = other_languages
         self.more_info = False
 
+        # Result values
+        self.onboard_user: bool = False
+        self.final_introduction: str
+
         self.log = getLogger(f"{self.bot.settings.log_name}.{self.cls_name}")
 
     async def interaction_check(self, inter: disnake.Interaction):
@@ -51,68 +55,29 @@ class AdminReviewView(BaseView):
                      inter: disnake.MessageInteraction):
 
         self.log.warning(self.log_press(inter, "Accept"))
+        self.onboard_user = True
+
         await inter.response.defer()
 
         roles = [utils.get_role(self.bot, lang.role_id) for lang in
                  self.languages]
 
         roles.append(utils.get_role(self.bot, "developer"))
-
         applicant_role = utils.get_role(self.bot, "applicant")
 
         await self.member.remove_roles(applicant_role)
         await self.member.add_roles(*roles, atomic=True)
-        self.log.debug(f"Gave {self.member} {roles}")
-
-        mod_log = self.bot.get_channel(
-            self.bot.settings.get_channel("mod-log"))
-
-        general_channel = self.bot.get_channel(
-            self.bot.settings.get_channel("general")
-        )
+        self.log.error(f"Gave `{self.member}` `{roles}`")
 
         if self.more_info:
-            introduction = await self._get_introduction(self.bot, inter,
+            self.final_introduction = await self._get_introduction(self.bot, inter,
                                                         self.introduction)
         else:
-            introduction = self.introduction
+            self.final_introduction = self.introduction
 
-        lang_repr = ""
-        for lang in self.languages:
-            lang_repr += f"{lang.emoji_repr} "
 
-        other_langs: str | None = None
-        if self.other_languages != "":
-            other_langs = (f"\n\n**Other Languages:**\n```"
-                           f"{self.other_languages}```")
 
-        msg = (
-            "**Introduction:**\n"
-            f"{introduction}\n\n"
-            f"**Languages:**\n"
-            f"{lang_repr}"
-            f"{other_langs if other_langs else ''}"
-        )
-
-        await self.bot.inter_send(
-            mod_log,
-            title=f"User {self.member} has been approved by {inter.user}",
-            panel=msg,
-            author=self.member,
-            color=utils.EmbedColor.SUCCESS
-        )
-
-        await self.bot.inter_send(
-            general_channel,
-            title=f"Please welcome `{self.member}`!",
-            panel=msg,
-            author=self.member,
-            color=utils.EmbedColor.SUCCESS
-        )
-
-        # This will trigger the delete event
-        await inter.channel.remove_user(self.member)
-        self.log.debug(f"Removed {self.member} from the thread")
+        self.stop()
 
     @disnake.ui.button(label="Decline",
                        style=disnake.ButtonStyle.red)
@@ -149,6 +114,8 @@ class AdminReviewView(BaseView):
             author=self.member,
             color=utils.EmbedColor.ERROR
         )
+
+        self.stop()
 
     @disnake.ui.button(label="More info",
                        style=disnake.ButtonStyle.blurple)

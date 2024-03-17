@@ -10,8 +10,9 @@ import disnake
 
 from .onboard_lang_selection import LanguageSelector, PrimaryLanguage
 from .onboard_intro_modal import IntroductionModal
+from .onboard_admin_review import AdminReviewView
+from ..config import BotMode
 from ..utils import crud, utils, models
-from .base_views import BaseView
 
 if TYPE_CHECKING:
     from bot import BotClient
@@ -67,11 +68,78 @@ class OnboardMgr:
         if modal_response is None:
             return
 
+        msg_payload = self._get_msg_payload(modal, langs)
+
         admin_view = AdminReviewView(self.bot,
-                                     inter.user,
+                                     self.user,
                                      modal.introduction,
                                      langs,
                                      modal.languages)
+
+        panel = await self.bot.inter_send(self.inter,
+                                          panel=msg_payload,
+                                          author=self.user,
+                                          flatten_list=True,
+                                          return_embed=True)
+
+        self.log.warning(f"Adding admins to {self.thread.jump_url}")
+
+        if self.bot.settings.mode == BotMode.DEV_MODE:
+            me = self.bot.get_user(265368254761926667)
+            await self.thread.send(me.mention, delete_after=5)
+        else:
+            await self.thread.send(
+                f"<@&{self.bot.settings.get_role('admin')}>",
+                delete_after=5)
+
+        await self.thread.send(embed=panel[0], view=admin_view)
+        await admin_view.wait()
+
+
+        mod_log = self.bot.get_channel(
+            self.bot.settings.get_channel("mod-log"))
+
+        general_channel = self.bot.get_channel(
+            self.bot.settings.get_channel("general")
+        )
+
+        lang_repr = ""
+        for lang in langs:
+            lang_repr += f"{lang.emoji_repr} "
+
+        other_langs: str | None = None
+        if admin_view.other_languages != "":
+            other_langs = (f"\n\n**Other Languages:**\n```"
+                           f"{admin_view.other_languages}```")
+
+        msg = (
+            "**Introduction:**\n"
+            f"{admin_view.final_introduction}\n\n"
+            f"**Languages:**\n"
+            f"{lang_repr}"
+            f"{other_langs if other_langs else ''}"
+        )
+
+        await self.bot.inter_send(
+            mod_log,
+            title=f"User {self.user} has been approved by {inter.user}",
+            panel=msg,
+            author=self.member,
+            color=utils.EmbedColor.SUCCESS
+        )
+
+        await self.bot.inter_send(
+            general_channel,
+            title=f"Please welcome `{self.member}`!",
+            panel=msg,
+            author=self.member,
+            color=utils.EmbedColor.SUCCESS
+        )
+
+        # This will trigger the delete event
+        await inter.channel.remove_user(self.member)
+        self.log.debug(f"Removed {self.member} from the thread")
+
 
         await msg.delete()
         print("other langs: ", modal.languages)
@@ -149,6 +217,25 @@ class OnboardMgr:
         print("Got the timeout")
 
 
+    @staticmethod
+    def _get_msg_payload(modal: IntroductionModal,
+                         langs: list[models.Language]) -> str:
+        lang_repr = ""
+        for lang in langs:
+            lang_repr += f"{lang.emoji_repr}  "
+
+        other_langs: str | None = None
+        if modal.languages != "":
+            other_langs = f"\n\n**Other Languages:**\n```{modal.languages}```"
+
+        return (
+            "**Introduction:**\n"
+            f"{modal.introduction}\n\n"
+            f"**Languages:**\n"
+            f"{lang_repr}"
+            f"{other_langs if other_langs else ''}"
+        )
+
 """
 
         admin_panel = AdminReviewView(self.bot,
@@ -177,22 +264,4 @@ class OnboardMgr:
                          f"to {inter.channel.jump_url}")
                          
 
-    @staticmethod
-    def _get_msg_payload(modal: IntroductionModal,
-                         langs: list[models.Language]) -> str:
-        lang_repr = ""
-        for lang in langs:
-            lang_repr += f"{lang.emoji_repr}  "
-
-        other_langs: str | None = None
-        if modal.languages != "":
-            other_langs = f"\n\n**Other Languages:**\n```{modal.languages}```"
-
-        return (
-            "**Introduction:**\n"
-            f"{modal.introduction}\n\n"
-            f"**Languages:**\n"
-            f"{lang_repr}"
-            f"{other_langs if other_langs else ''}"
-        )
 """
