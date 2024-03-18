@@ -190,7 +190,6 @@ class Admin(commands.Cog):
                 if days > 14:
                     count += 1
                     await member.kick(reason=f"User has been in server for {days} without on-boarding")
-                    break
 
         await self.bot.inter_send(inter,
                                   f"Pruned {count} users",
