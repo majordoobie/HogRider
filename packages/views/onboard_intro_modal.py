@@ -26,7 +26,7 @@ class IntroductionModal(disnake.ui.Modal):
                             "of the features your tool will have.",
                 custom_id="Introduction",
                 style=disnake.TextInputStyle.paragraph,
-                min_length=100,
+                min_length=80,
                 max_length=1024,
                 required=True
             ),

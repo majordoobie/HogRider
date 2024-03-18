@@ -1,6 +1,7 @@
 import logging
 import string
 import re
+from datetime import datetime, timezone
 from random import choice, randint
 
 import disnake
@@ -173,6 +174,27 @@ class Admin(commands.Cog):
             output += f"+ {i.split('.')[-1]}\n"
 
         await self.bot.send(ctx, output)
+
+    @commands.check(utils.is_admin)
+    @commands.slash_command(guild_ids=guild_ids())
+    async def prune_users(self, inter: disnake.ApplicationCommandInteraction):
+        """
+        Remove users who have been in server for 14 days without a role
+        """
+        await inter.response.defer()
+        count = 0
+        for member in inter.guild.members:
+            if len(member.roles) == 1:
+                timelapse = datetime.now(timezone.utc) - member.joined_at
+                days = timelapse.days % 365
+                if days > 14:
+                    count += 1
+                    await member.kick(reason=f"User has been in server for {days} without on-boarding")
+                    break
+
+        await self.bot.inter_send(inter,
+                                  f"Pruned {count} users",
+                                  color=EmbedColor.SUCCESS)
 
     @commands.check(utils.is_admin)
     @commands.slash_command(guild_ids=guild_ids())
