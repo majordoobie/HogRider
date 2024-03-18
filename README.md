@@ -1,5 +1,7 @@
 # apibot
 
-Just a little bot we developed to help automate some tasks involving other bots. The primary feature is monitoring.  cogs/downtime.py watches for the bot's Discord presence and if it's anything other than online, it sends the bot owner a message.
+HogRider is the official administration bot for the [Clash of Clans](https://discord.gg/clashapi) developer discord.
 
-cogs/general.py includes a command to create a demo channel for bots on the server
+The main tasks of the bot is to automated on-boarding, providing quick links to FAQ's and providing other
+QoL utilities for our developer community.
+

@@ -10,7 +10,7 @@ from disnake.ui import Item
 
 from packages.config import Settings
 from packages.utils.utils import EmbedColor
-from packages.views.step1_welcome_views import WelcomeView
+from packages.views.welcome_views import WelcomeView
 
 DESCRIPTION = (
     "Welcome to the Clash API Developers bot. This is a custom bot created by and for the users of the "

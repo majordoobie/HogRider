@@ -19,16 +19,23 @@ class AdminReviewView(BaseView):
     def __init__(self, bot: "BotClient",
                  member: disnake.Member,
                  introduction: str,
-                 languages: list[models.Language] | None,
-                 other_languages: str) -> None:
+                 langs: list[models.Language] | None,
+                 other_languages: str,
+                 primary_lang: models.Language) -> None:
         super().__init__(bot, timeout=None)
         self.cls_name = self.__class__.__name__
         self.bot = bot
         self.member = member
         self.introduction = introduction
-        self.languages = languages
+        self.langs = langs
+        self.primary_lang = primary_lang
         self.other_languages = other_languages
         self.more_info = False
+
+        # Result values
+        self.accept_user: bool = False
+        self.final_introduction: str
+        self.approving_user: disnake.Member
 
         self.log = getLogger(f"{self.bot.settings.log_name}.{self.cls_name}")
 
@@ -42,77 +49,52 @@ class AdminReviewView(BaseView):
 
         return True
 
+    def log_press(self, inter: disnake.MessageInteraction, button: str) -> str:
+        return f"`{inter.user}` clicked on `{button}` for `{self.member}`"
+
     @disnake.ui.button(label="Accept",
                        style=disnake.ButtonStyle.green)
     async def accept(self, button: disnake.ui.Button,
                      inter: disnake.MessageInteraction):
+
+        self.log.warning(self.log_press(inter, "Accept"))
+        self.accept_user = True
+
         await inter.response.defer()
 
         roles = [utils.get_role(self.bot, lang.role_id) for lang in
-                 self.languages]
+                 self.langs]
 
         roles.append(utils.get_role(self.bot, "developer"))
-
         applicant_role = utils.get_role(self.bot, "applicant")
 
         await self.member.remove_roles(applicant_role)
         await self.member.add_roles(*roles, atomic=True)
-        self.log.debug(f"Gave {self.member} {roles}")
 
-        mod_log = self.bot.get_channel(
-            self.bot.settings.get_channel("mod-log"))
+        old_name = self.member.nick if self.member.nick else self.member.name
+        try:
+            await self.member.edit(nick=f"{old_name} | {self.primary_lang.role_name}")
+        except disnake.HTTPException:
+            self.log.critical(f"Could not edit `{self.member}` name due to length")
 
-        general_channel = self.bot.get_channel(
-            self.bot.settings.get_channel("general")
-        )
+        self.log.error(f"Enrolling {self.member}\nNew Name: `{self.member.nick}`\n"
+                       f"New Roles: `{', '.join(i.role_name for i in self.langs)}`")
 
         if self.more_info:
-            introduction = await self._get_introduction(self.bot, inter,
+            self.final_introduction = await self._get_introduction(self.bot, inter,
                                                         self.introduction)
         else:
-            introduction = self.introduction
+            self.final_introduction = self.introduction
 
-        lang_repr = ""
-        for lang in self.languages:
-            lang_repr += f"{lang.emoji_repr} "
-
-        other_langs: str | None = None
-        if self.other_languages != "":
-            other_langs = (f"\n\n**Other Languages:**\n```"
-                           f"{self.other_languages}```")
-
-        msg = (
-            "**Introduction:**\n"
-            f"{introduction}\n\n"
-            f"**Languages:**\n"
-            f"{lang_repr}"
-            f"{other_langs if other_langs else ''}"
-        )
-
-        await self.bot.inter_send(
-            mod_log,
-            title=f"User {self.member} has been approved by {inter.user}",
-            panel=msg,
-            author=self.member,
-            color=utils.EmbedColor.SUCCESS
-        )
-
-        await self.bot.inter_send(
-            general_channel,
-            title=f"Please welcome `{self.member}`!",
-            panel=msg,
-            author=self.member,
-            color=utils.EmbedColor.SUCCESS
-        )
-
-        # This will trigger the delete event
-        await inter.channel.remove_user(self.member)
-        self.log.debug(f"Removed {self.member} from the thread")
+        self.approving_user = inter.user
+        self.stop()
 
     @disnake.ui.button(label="Decline",
                        style=disnake.ButtonStyle.red)
     async def decline(self, button: disnake.ui.Button,
                       inter: disnake.MessageInteraction):
+        self.log.warning(self.log_press(inter, "Decline"))
+
         custom_id = f"{inter.user.id}_IM"
 
         def check(modal_inter: disnake.ModalInteraction) -> bool:
@@ -120,11 +102,11 @@ class AdminReviewView(BaseView):
 
         modal = DeclineModal(custom_id=custom_id)
         await inter.response.send_modal(modal)
-        self.bot.log.debug(f"Sending admin {inter.user} the decline modal")
+
         await self.bot.wait_for("modal_submit", check=check)
 
-        self.bot.log.info(f"{inter.user} has initiated a "
-                          f"{'ban' if modal.ban else 'kick'} for applicant")
+        self.bot.log.warning(f"`{inter.user}` has initiated a "
+                             f"{'ban' if modal.ban else 'kick'} for applicant")
 
         if modal.ban:
             await self.member.ban(reason=modal.reason)
@@ -143,16 +125,32 @@ class AdminReviewView(BaseView):
             color=utils.EmbedColor.ERROR
         )
 
+        self.stop()
+
     @disnake.ui.button(label="More info",
                        style=disnake.ButtonStyle.blurple)
     async def more_info(self, button: disnake.ui.Button,
                         inter: disnake.MessageInteraction):
+        self.log.warning(self.log_press(inter, "More Info"))
         self.more_info = True
         await inter.response.defer()
         await inter.send(
             f"{self.member.mention} could you please provide "
             f"more information about how you plan on "
             f"using the API")
+
+    @disnake.ui.button(label="Learning Server",
+                       style=disnake.ButtonStyle.blurple)
+    async def learning_server(self, button: disnake.ui.Button,
+                              inter: disnake.MessageInteraction):
+
+        self.log.warning(self.log_press(inter, "Learning Server"))
+        self.more_info = True
+        await inter.response.defer()
+        await inter.send(
+            f"Hi, {self.member.mention}! This server is mainly about the APIs Supercell provides "
+            f"about their games. While requesting general coding help is allowed, "
+            f"it's not the main purpose of the server. What experience do you have with coding?")
 
     async def _get_introduction(self, bot: "BotClient",
                                 inter: disnake.MessageInteraction,

@@ -9,7 +9,7 @@ from disnake.ext import commands
 from packages.config import guild_ids
 from packages.utils import crud, models, utils
 from packages.utils.utils import EmbedColor
-from packages.views.language_view import LanguageView
+from packages.views.get_language_view import LanguageView
 
 PANEL_DIRECTIONS = "Choose your language to receive your language role"
 IMAGE_PATH = Path("language_board_image.png")

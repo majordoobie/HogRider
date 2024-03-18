@@ -6,7 +6,7 @@ from disnake import ApplicationCommandInteraction
 from bot import BotClient
 from packages.utils.utils import is_admin
 from packages.config import guild_ids
-from packages.views.step1_welcome_views import WelcomeView
+from packages.views.welcome_views import WelcomeView
 
 WELCOME_MESSAGE = (
     "We're glad to have you! We're here to help you do the things you want "
