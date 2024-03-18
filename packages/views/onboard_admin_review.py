@@ -19,20 +19,23 @@ class AdminReviewView(BaseView):
     def __init__(self, bot: "BotClient",
                  member: disnake.Member,
                  introduction: str,
-                 languages: list[models.Language] | None,
-                 other_languages: str) -> None:
+                 langs: list[models.Language] | None,
+                 other_languages: str,
+                 primary_lang: models.Language) -> None:
         super().__init__(bot, timeout=None)
         self.cls_name = self.__class__.__name__
         self.bot = bot
         self.member = member
         self.introduction = introduction
-        self.languages = languages
+        self.langs = langs
+        self.primary_lang = primary_lang
         self.other_languages = other_languages
         self.more_info = False
 
         # Result values
-        self.onboard_user: bool = False
+        self.accept_user: bool = False
         self.final_introduction: str
+        self.approving_user: disnake.Member
 
         self.log = getLogger(f"{self.bot.settings.log_name}.{self.cls_name}")
 
@@ -55,19 +58,27 @@ class AdminReviewView(BaseView):
                      inter: disnake.MessageInteraction):
 
         self.log.warning(self.log_press(inter, "Accept"))
-        self.onboard_user = True
+        self.accept_user = True
 
         await inter.response.defer()
 
         roles = [utils.get_role(self.bot, lang.role_id) for lang in
-                 self.languages]
+                 self.langs]
 
         roles.append(utils.get_role(self.bot, "developer"))
         applicant_role = utils.get_role(self.bot, "applicant")
 
         await self.member.remove_roles(applicant_role)
         await self.member.add_roles(*roles, atomic=True)
-        self.log.error(f"Gave `{self.member}` `{roles}`")
+
+        old_name = self.member.nick if self.member.nick else self.member.name
+        try:
+            await self.member.edit(nick=f"{old_name} | {self.primary_lang.role_name}")
+        except disnake.HTTPException:
+            self.log.critical(f"Could not edit `{self.member}` name due to length")
+
+        self.log.error(f"Enrolling {self.member}\nNew Name: `{self.member.nick}`\n"
+                       f"New Roles: `{', '.join(i.role_name for i in self.langs)}`")
 
         if self.more_info:
             self.final_introduction = await self._get_introduction(self.bot, inter,
@@ -75,8 +86,7 @@ class AdminReviewView(BaseView):
         else:
             self.final_introduction = self.introduction
 
-
-
+        self.approving_user = inter.user
         self.stop()
 
     @disnake.ui.button(label="Decline",

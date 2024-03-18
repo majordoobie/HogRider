@@ -113,7 +113,7 @@ class DiscordWebhookHandler(logging.Handler):
         embeds = []
         for msg in msgs:
             embeds.append(
-                Embed(title=f"{record.name}\n\n{record.pathname.split('/')[-1]}:{record.lineno}",
+                Embed(title=f"{record.name}\n{record.pathname.split('/')[-1]}:{record.lineno}\n\n",
                       description=f"{msg}",
                       color=colors[record.levelno]
                       )
