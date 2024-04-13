@@ -3,7 +3,8 @@ def init_tables() -> list[str]:
         _table_create_language_board(),
         _table_create_smelly_mike(),
         _table_create_user_message(),
-        _table_create_thread_manager()
+        _table_create_thread_manager(),
+        _table_create_bot_responses(),
     ]
 
 
@@ -48,3 +49,14 @@ def _table_create_thread_manager() -> str:
         PRIMARY KEY (thread_id)
     )
     """
+
+def _table_create_bot_responses() -> str:
+    return """\
+    CREATE TABLE IF NOT EXISTS bot_responses (
+        check_time TIMESTAMP NOT NULL,
+        clan_response FLOAT NOT NULL,
+        player_response FLOAT NOT NULL,
+        war_response FLOAT NOT NULL
+        )
+        """
+    
