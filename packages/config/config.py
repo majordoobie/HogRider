@@ -110,7 +110,8 @@ class Settings:
                 "event_driver",
                 "general",
                 "language_board",
-                "welcome"
+                "welcome",
+                "response",
             ]
 
         else:
@@ -120,7 +121,7 @@ class Settings:
                 "general",
                 "language_board",
                 "welcome",
-                "response"
+                "response",
             ]
 
     @property
