@@ -39,3 +39,10 @@ class ThreadMgr:
     thread_id: int
     user_id: int
     created_date: datetime
+
+
+@dataclass
+class CoCEndPointResponse:
+    player_resp: int
+    clan_resp: int
+    war_resp: int

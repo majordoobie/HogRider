@@ -23,6 +23,20 @@ class Response(commands.Cog):
         self.log: logging.Logger = logging.getLogger(f"{self.bot.settings.log_name}.{self.__class__.__name__}")
 
         self.response_update.start()
+        self.server_display_update.start()
+
+    @tasks.loop(seconds=30)
+    async def server_display_update(self):
+        records = await crud.get_api_response(self.bot.pool)
+
+        for key_name in records.__dict__.keys():
+            channel = self.bot.get_channel(self.bot.settings.get_channel(key_name))
+            if channel is None:
+                self.log.error(f"Could not find channel {key_name}")
+                continue
+
+            channel_name = " ".join(key_name.split("_")).title()
+            await channel.edit(name=f"{channel_name}: {records.__dict__.get(key_name)}ms")
 
     @tasks.loop(seconds=15)
     async def response_update(self) -> None:
@@ -32,12 +46,14 @@ class Response(commands.Cog):
 
         await crud.set_api_response(self.bot.pool, player_resp, clan_resp, war_resp)
 
+    @server_display_update.before_loop
     @response_update.before_loop
-    async def before_response_update(self):
+    async def before_loops(self):
         await self.bot.wait_until_ready()
 
     def cog_unload(self):
         self.response_update.cancel()
+        self.server_display_update.cancel()
 
     def get_response_times(self) -> list[int]:
         """

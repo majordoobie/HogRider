@@ -149,3 +149,14 @@ async def set_api_response(pool: Pool, player_resp: int, clan_resp: int, war_res
         await conn.execute(sql, datetime.now(), player_resp, clan_resp, war_resp)
 
     return None
+
+
+async def get_api_response(pool: Pool) -> models.CoCEndPointResponse:
+    sql = ("SELECT player_resp, clan_resp, war_resp "
+           "FROM coc_api_response "
+           "ORDER BY check_time DESC")
+
+    async with pool.acquire() as conn:
+        record = await conn.fetchrow(sql)
+
+    return models.CoCEndPointResponse(**record)
