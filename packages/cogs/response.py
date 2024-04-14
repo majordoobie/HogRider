@@ -6,6 +6,7 @@ import requests
 from disnake.ext import commands, tasks
 
 from bot import BotClient
+from packages.utils import crud, models, utils
 
 BASE = "https://api.clashofclans.com/v1"
 END_POINTS = [
@@ -18,8 +19,8 @@ END_POINTS = [
 class Response(commands.Cog):
 
     def __init__(self, bot: BotClient):
-        self.bot = bot
-        self.log = logging.getLogger(f"{self.bot.settings.log_name}.{self.__class__.__name__}")
+        self.bot: BotClient = bot
+        self.log: logging.Logger = logging.getLogger(f"{self.bot.settings.log_name}.{self.__class__.__name__}")
 
         self.response_update.start()
 
@@ -29,7 +30,7 @@ class Response(commands.Cog):
         player_resp, clan_resp, war_resp = await loop.run_in_executor(
             None, self.get_response_times)
 
-        print(f"Response update: {player_resp} {clan_resp} {war_resp}")
+        await crud.set_api_response(self.bot.pool, player_resp, clan_resp, war_resp)
 
     @response_update.before_loop
     async def before_response_update(self):

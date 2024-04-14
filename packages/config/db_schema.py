@@ -52,11 +52,11 @@ def _table_create_thread_manager() -> str:
 
 def _table_create_bot_responses() -> str:
     return """\
-    CREATE TABLE IF NOT EXISTS bot_responses (
+    CREATE TABLE IF NOT EXISTS coc_api_response (
         check_time TIMESTAMP NOT NULL,
-        clan_response FLOAT NOT NULL,
-        player_response FLOAT NOT NULL,
-        war_response FLOAT NOT NULL
+        clan_resp SMALLINT NOT NULL,
+        player_resp SMALLINT NOT NULL,
+        war_resp SMALLINT NOT NULL
         )
         """
     
