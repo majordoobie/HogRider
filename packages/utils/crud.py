@@ -138,3 +138,25 @@ async def delete_thread_mgr(pool: Pool, thread_id: int) -> None:
         await conn.execute(
             "DELETE FROM thread_manager WHERE thread_id = $1",
             thread_id)
+
+
+async def set_api_response(pool: Pool, player_resp: int, clan_resp: int, war_resp: int) -> None:
+    sql = ("INSERT INTO coc_api_response "
+           "(check_time, clan_resp, player_resp, war_resp) "
+           "VALUES ($1, $2, $3, $4)")
+
+    async with pool.acquire() as conn:
+        await conn.execute(sql, datetime.now(), player_resp, clan_resp, war_resp)
+
+    return None
+
+
+async def get_api_response(pool: Pool) -> models.CoCEndPointResponse:
+    sql = ("SELECT player_resp, clan_resp, war_resp "
+           "FROM coc_api_response "
+           "ORDER BY check_time DESC")
+
+    async with pool.acquire() as conn:
+        record = await conn.fetchrow(sql)
+
+    return models.CoCEndPointResponse(**record)
