@@ -2,15 +2,17 @@ import asyncio
 import logging
 import time
 from datetime import datetime, timezone
+import io
 
 import asyncpg
 import disnake
 import requests
 from disnake.ext import commands, tasks
 import pandas as pd
+from matplotlib.ticker import NullFormatter
 
 from bot import BotClient
-from packages.config import guild_ids
+from packages.config import guild_ids, BotMode
 from packages.utils import crud
 
 BASE = "https://api.clashofclans.com/v1"
@@ -27,9 +29,10 @@ class Response(commands.Cog):
         self.bot: BotClient = bot
         self.log: logging.Logger = logging.getLogger(f"{self.bot.settings.log_name}.{self.__class__.__name__}")
 
-        self.response_update.add_exception_type(asyncpg.PostgresConnectionError)
-        self.response_update.start()
-        self.server_display_update.start()
+        if self.bot.settings.mode == BotMode.LIVE_MODE:
+            self.response_update.add_exception_type(asyncpg.PostgresConnectionError)
+            self.response_update.start()
+            self.server_display_update.start()
 
     @tasks.loop(minutes=5)
     async def server_display_update(self):
@@ -50,7 +53,7 @@ class Response(commands.Cog):
             channel_name = " ".join(key_name.split("_")).title()
             await channel.edit(name=f"{channel_name}: {records.__dict__.get(key_name)}ms")
 
-    @tasks.loop(seconds=15.0)
+    @tasks.loop(minutes=5)
     async def response_update(self) -> None:
         loop = asyncio.get_event_loop()
         player_resp, clan_resp, war_resp = await loop.run_in_executor(
@@ -107,7 +110,29 @@ class Response(commands.Cog):
 
         columns = [key for key in records[0].__dict__.keys()]
         df = pd.DataFrame(records, columns=columns)
-        print(df)
+
+        """The following code was graciously provided by @lukasthaler"""
+        # generate plot
+        plot = df.plot.line(x='check_time', y=['clan_resp', 'player_resp', 'war_resp'],
+                            title='API Latencies', grid=True, xlabel='Last 24 hours', ylabel='Response Time (ms)')
+
+        # customize legend
+        _, labels = plot.get_legend_handles_labels()
+        plot.legend([f'{el.split("_")[0].title()} Endpoint' for el in labels], loc='upper right')
+
+        # disable xaxis labels
+        plot.xaxis.set_major_formatter(NullFormatter())
+        plot.xaxis.set_minor_formatter(NullFormatter())
+
+        # enable xaxis grid
+        plot.xaxis.grid(visible=True, which='both')
+
+        with io.BytesIO() as img_bytes:
+            fig = plot.get_figure()
+            fig.savefig(img_bytes, format='png')
+            img_bytes.seek(0)
+            file = disnake.File(img_bytes, f'{plot.get_title()}.png')
+            await inter.send(file=file)
 
 
 def setup(bot):

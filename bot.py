@@ -168,7 +168,10 @@ class BotClient(commands.Bot):
                                       )
 
                 self.log.error("Error: The bot likely failed to reply to "
-                               "the interaction", exc_info=True)
+                               f"the interaction\n\n```\n{err_msg}\n```", exc_info=True)
+
+                await self.inter_send(inter, panel="Sorry! I have an error. Have an admin check the logs for ya.",
+                                      color=EmbedColor.ERROR)
                 return
 
         # Catch command.Check errors
