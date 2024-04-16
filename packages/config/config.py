@@ -7,7 +7,7 @@ import logging
 
 _config_path = Path(__file__).parent
 
-VERSION = "2.1.2"
+VERSION = "2.2.0"
 
 
 class BotMode(Enum):
@@ -117,11 +117,6 @@ class Settings:
         else:
             return [
                 "admin",
-                "event_driver",
-                "general",
-                "language_board",
-                "welcome",
-                "response",
             ]
 
     @property

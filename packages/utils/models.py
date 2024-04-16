@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 import disnake
@@ -46,3 +46,29 @@ class CoCEndPointResponse:
     player_resp: int
     clan_resp: int
     war_resp: int
+
+
+@dataclass
+class CoCEndPointStatus(CoCEndPointResponse):
+    check_time: datetime
+
+
+@dataclass
+class DemoChannel:
+    channel_id: int
+    bot_id: int
+    owner_id: int
+    creation_date: datetime
+
+    channel_obj: disnake.TextChannel | None
+    member_obj: disnake.Member | None
+    bot_obj: disnake.Member | None
+
+    channel_present: str = field(init=False)
+    member_present: str = field(init=False)
+    bot_present: str = field(init=False)
+
+    def __post_init__(self):
+        self.channel_present = "👍" if self.channel_obj else "❌"
+        self.member_present = "👍" if self.member_obj else "❌"
+        self.bot_present = "👍" if self.bot_obj else "❌"

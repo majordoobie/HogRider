@@ -169,7 +169,7 @@ class OnboardMgr:
         return admin_view
 
     async def _onboard_user(self,
-                           admin_resp: AdminReviewView) -> None:
+                            admin_resp: AdminReviewView) -> None:
         mod_log = self.bot.get_channel(
             self.bot.settings.get_channel("mod-log"))
 
@@ -205,12 +205,11 @@ class OnboardMgr:
     @staticmethod
     def _get_msg_payload(introduction: str,
                          langs: list[models.Language],
-                         other_langs: str) -> str:
+                         other_langs: None | str) -> str:
         lang_repr = ""
         for lang in langs:
             lang_repr += f"{lang.emoji_repr}  "
 
-        other_langs: str | None = None
         if other_langs != "":
             other_langs = f"\n\n**Other Languages:**\n```{other_langs}```"
 
@@ -221,4 +220,3 @@ class OnboardMgr:
             f"{lang_repr}"
             f"{other_langs if other_langs else ''}"
         )
-
