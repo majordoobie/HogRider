@@ -7,7 +7,7 @@ import logging
 
 _config_path = Path(__file__).parent
 
-VERSION = "2.1.3"
+VERSION = "2.2.0"
 
 
 class BotMode(Enum):
