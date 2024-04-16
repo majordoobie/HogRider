@@ -50,6 +50,7 @@ class BotClient(commands.Bot):
         self.color = disnake.Color.greyple()
         self.stats_board_id = None
         self.log = logging.getLogger(f"{self.settings.log_name}.BotClient")
+        self.loaded_cogs: list[str] = []
 
         # Persistent view
         self.welcome_view_init = False
@@ -58,6 +59,7 @@ class BotClient(commands.Bot):
             try:
                 self.load_extension(f"packages.cogs.{extension}")
                 self.log.debug(f"{extension} loaded successfully...")
+                self.loaded_cogs.append(extension)
             except Exception as extension:
                 self.log.error(f"Failed to load extension {extension}.",
                                exc_info=True)

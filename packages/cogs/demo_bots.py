@@ -33,7 +33,7 @@ class DemoBot(commands.Cog):
                              member: disnake.Member,
                              bot: disnake.Member) -> None:
         """Register a bot to the demos channel for display"""
-        pass
+        print(member, bot)
 
     @demo_bot_setup.autocomplete("bot")
     async def bot_name_autocomplete(self,

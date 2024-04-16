@@ -1,14 +1,12 @@
 import logging
-import string
 import re
 from datetime import datetime, timezone
-from random import choice, randint
 
 import disnake
-from disnake.ext import commands
+from disnake.ext import commands, tasks
 
 from packages.utils import utils
-from packages.config import guild_ids
+from packages.config import guild_ids, BotMode
 from bot import BotClient
 from packages.utils.utils import EmbedColor
 
@@ -28,6 +26,22 @@ class Admin(commands.Cog):
         self.bot = bot
         self.log = logging.getLogger(f"{self.bot.settings.log_name}.admin")
 
+        if self.bot.settings.mode == BotMode.LIVE_MODE:
+            self.prune_users_task.start()
+
+    @tasks.loop(hours=2)
+    async def prune_users_task(self):
+        count = await self._prune_users(guild=None)
+        if count:
+            self.log.error(f"Removed {count} inactive users from server")
+
+    @prune_users_task.before_loop
+    async def before_loops(self):
+        await self.bot.wait_until_ready()
+
+    def cog_unload(self):
+        self.prune_users_task.cancel()
+
     @commands.command(name="lg", hidden=True)
     async def links_get(self, ctx, tag):
         """Get info from links api"""
@@ -36,34 +50,6 @@ class Admin(commands.Cog):
         else:
             payload = await self.bot.links.get_linked_players(tag)
         return await ctx.send(payload)
-
-    # @commands.command(name="archive")
-    # @commands.has_role("Admin")
-    # async def archive_channel(self, ctx, limit: int = None):
-    #     """Create html file with a transcript of the channel (Admin only)"""
-    #     transcript = await chat_exporter.export(ctx.channel, limit=limit,
-    #                                             bot=self.bot)
-    #     if transcript is None:
-    #         return await ctx.send("Nothing to export")
-    #     transcript_file = discord.File(io.BytesIO(transcript.encode()),
-    #                                    filename=f"transcript-{ctx.channel.name}.html"
-    #                                    )
-    #     await ctx.send(file=transcript_file)
-
-    # @commands.command(name="add_user", hidden=True)
-    # @commands.is_owner()
-    # async def add_user(self, ctx, usr):
-    #     """Add user for coc discord links api (owner only)"""
-    #     PUNCTUATION = "!@#$%^&*"
-    #     pwd = choice(string.ascii_letters) + choice(PUNCTUATION) + choice(
-    #         string.digits)
-    #     characters = string.ascii_letters + PUNCTUATION + string.digits
-    #     pwd += "".join(choice(characters) for x in range(randint(8, 12)))
-    #     sql = "INSERT INTO coc_discord_users (username, passwd) VALUES ($1, $2)"
-    #     await self.bot.pool.execute(sql, usr, pwd)
-    #     await ctx.send(
-    #         f"User: {usr} has been created with the following password:")
-    #     await ctx.send(pwd)
 
     @commands.check(utils.is_owner)
     @commands.slash_command(guild_ids=guild_ids())
@@ -103,6 +89,7 @@ class Admin(commands.Cog):
         cog = f"{self.bot.settings.cog_path}.{module}"
         try:
             self.bot.load_extension(cog)
+            self.bot.loaded_cogs.append(module)
         except Exception as error:
             await inter.send(error)
             self.log.error("Module load error", exc_info=True)
@@ -129,6 +116,10 @@ class Admin(commands.Cog):
         cog = f"{self.bot.settings.cog_path}.{module}"
         try:
             self.bot.unload_extension(cog)
+            for index, cog in enumerate(self.bot.loaded_cogs):
+                if cog == module:
+                    self.bot.loaded_cogs.pop(index)
+
         except Exception as error:
             await inter.send(error)
             self.log.error("Module unload error", exc_info=True)
@@ -170,7 +161,7 @@ class Admin(commands.Cog):
         List the loaded modules
         """
         output = ''
-        for i in self.bot.settings.cogs_list:
+        for i in self.bot.loaded_cogs:
             output += f"+ {i.split('.')[-1]}\n"
 
         await self.bot.send(ctx, output)
@@ -182,15 +173,7 @@ class Admin(commands.Cog):
         Remove users who have been in server for 14 days without a role
         """
         await inter.response.defer()
-        count = 0
-        for member in inter.guild.members:
-            if len(member.roles) == 1:
-                timelapse = datetime.now(timezone.utc) - member.joined_at
-                days = timelapse.days % 365
-                if days > 14:
-                    count += 1
-                    await member.kick(reason=f"User has been in server for {days} without on-boarding")
-
+        count = await self._prune_users(inter.guild)
         await self.bot.inter_send(inter,
                                   f"Pruned {count} users",
                                   color=EmbedColor.SUCCESS)
@@ -257,6 +240,21 @@ class Admin(commands.Cog):
             inter,
             f"Rules have been recreated. View here <#{channel.id}>"
         )
+
+    async def _prune_users(self, guild: disnake.Guild | None) -> int:
+        """Remove all users that have been in the server for 14 days without a role"""
+        if guild is None:
+            guild = self.bot.get_guild(guild_ids()[0])
+
+        count = 0
+        for member in guild.members:
+            if len(member.roles) == 1:
+                timelapse = datetime.now(timezone.utc) - member.joined_at
+                days = timelapse.days % 365
+                if days > 14:
+                    count += 1
+                    await member.kick(reason=f"User has been in server for {days} without on-boarding")
+        return count
 
 
 def setup(bot):

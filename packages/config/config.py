@@ -117,7 +117,6 @@ class Settings:
         else:
             return [
                 "admin",
-                "general",
             ]
 
     @property
