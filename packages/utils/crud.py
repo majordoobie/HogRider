@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import asyncpg
 from asyncpg import Pool
 import disnake
 
@@ -160,3 +161,45 @@ async def get_api_response(pool: Pool) -> models.CoCEndPointResponse:
         record = await conn.fetchrow(sql)
 
     return models.CoCEndPointResponse(**record)
+
+
+async def get_api_response_24h(pool: Pool) -> list[models.CoCEndPointStatus]:
+    sql = ("SELECT * FROM coc_api_response "
+           "WHERE check_time > now() - INTERVAL  '24 hours' "
+           "ORDER BY check_time DESC")
+
+    async with pool.acquire() as conn:
+        records = await conn.fetch(sql)
+
+    return [models.CoCEndPointStatus(**record) for record in records]
+
+
+async def set_demo_channel(pool: Pool,
+                           channel_id: int,
+                           bot_id: int,
+                           owner_id) -> None:
+    sql = "INSERT INTO demo_channel (channel_id, bot_id, owner_id, creation_date) VALUES ($1, $2, $3, $4)"
+    async with pool.acquire() as conn:
+        await conn.execute(sql, channel_id, bot_id, owner_id, datetime.now())
+
+
+async def get_demo_channel(pool: Pool, guild: disnake.Guild) -> list[models.DemoChannel]:
+    sql = "SELECT * FROM bot_channel"
+
+    async with pool.acquire() as conn:
+        records = await conn.fetch(sql)
+
+    results = []
+    for record in records:
+        member_obj = guild.get_member(record.owner_id)
+        bot_obj = guild.get_member(record.bot_id)
+        channel_obj = guild.get_channel(record.channel_id)
+
+        results.append(models.DemoChannel(
+            **record.__dict__,
+            member_obj=member_obj,
+            bot_obj=bot_obj,
+            channel_obj=channel_obj
+        ))
+
+    return results

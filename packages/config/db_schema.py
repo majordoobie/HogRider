@@ -40,6 +40,7 @@ def _table_create_user_message() -> str:
     );
     """
 
+
 def _table_create_thread_manager() -> str:
     return """\
     CREATE TABLE IF NOT EXISTS thread_manager (
@@ -50,6 +51,7 @@ def _table_create_thread_manager() -> str:
     )
     """
 
+
 def _table_create_bot_responses() -> str:
     return """\
     CREATE TABLE IF NOT EXISTS coc_api_response (
@@ -59,4 +61,15 @@ def _table_create_bot_responses() -> str:
         war_resp SMALLINT NOT NULL
         )
         """
-    
+
+
+def _table_create_demo_channel() -> str:
+    return """\
+    CREATE TABLE IF NOT EXISTS demo_channel (
+        channel_id BIGINT NOT NULL,
+        bot_id BIGINT NOT NULL,
+        owner_id BIGINT NOT NULL,
+        creation_date TIMESTAMP NOT NULL,
+        PRIMARY KEY(channel_id)
+    )
+    """

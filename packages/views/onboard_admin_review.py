@@ -82,7 +82,7 @@ class AdminReviewView(BaseView):
 
         if self.more_info:
             self.final_introduction = await self._get_introduction(self.bot, inter,
-                                                        self.introduction)
+                                                                   self.introduction)
         else:
             self.final_introduction = self.introduction
 

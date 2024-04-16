@@ -1,12 +1,17 @@
 import asyncio
 import logging
 import time
+from datetime import datetime, timezone
 
+import asyncpg
+import disnake
 import requests
 from disnake.ext import commands, tasks
+import pandas as pd
 
 from bot import BotClient
-from packages.utils import crud, models, utils
+from packages.config import guild_ids
+from packages.utils import crud
 
 BASE = "https://api.clashofclans.com/v1"
 END_POINTS = [
@@ -22,12 +27,19 @@ class Response(commands.Cog):
         self.bot: BotClient = bot
         self.log: logging.Logger = logging.getLogger(f"{self.bot.settings.log_name}.{self.__class__.__name__}")
 
+        self.response_update.add_exception_type(asyncpg.PostgresConnectionError)
         self.response_update.start()
         self.server_display_update.start()
 
-    @tasks.loop(seconds=30)
+    @tasks.loop(minutes=5)
     async def server_display_update(self):
         records = await crud.get_api_response(self.bot.pool)
+        self.log.debug(f"Response update: Player: {records.player_resp}ms "
+                       f"Clan: {records.clan_resp}ms War: {records.war_resp}ms")
+
+        channel = self.bot.get_channel(self.bot.settings.get_channel("resp_update"))
+        if channel is not None:
+            await channel.edit(name=f"Updated: {datetime.now(timezone.utc).strftime('%H:%M:%S(UTC)')}")
 
         for key_name in records.__dict__.keys():
             channel = self.bot.get_channel(self.bot.settings.get_channel(key_name))
@@ -38,7 +50,7 @@ class Response(commands.Cog):
             channel_name = " ".join(key_name.split("_")).title()
             await channel.edit(name=f"{channel_name}: {records.__dict__.get(key_name)}ms")
 
-    @tasks.loop(seconds=15)
+    @tasks.loop(seconds=15.0)
     async def response_update(self) -> None:
         loop = asyncio.get_event_loop()
         player_resp, clan_resp, war_resp = await loop.run_in_executor(
@@ -85,6 +97,17 @@ class Response(commands.Cog):
             response_times[index] = int((stop - start) / 1_000_000)
 
         return response_times
+
+    @commands.slash_command(guild_ids=guild_ids())
+    async def response_times(self,
+                             inter: disnake.ApplicationCommandInteraction) -> None:
+        """Display a 24-hour graph for the response times"""
+        await inter.response.defer()
+        records = await crud.get_api_response_24h(self.bot.pool)
+
+        columns = [key for key in records[0].__dict__.keys()]
+        df = pd.DataFrame(records, columns=columns)
+        print(df)
 
 
 def setup(bot):
