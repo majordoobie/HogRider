@@ -6,7 +6,7 @@ from disnake.ext import commands
 from bot import BotClient
 from packages.config import guild_ids
 from packages.utils import crud, models
-from packages.utils.utils import is_admin
+from packages.utils.utils import is_admin, EmbedColor
 
 
 class DemoBot(commands.Cog):
@@ -33,19 +33,57 @@ class DemoBot(commands.Cog):
                              member: disnake.Member,
                              bot: disnake.Member) -> None:
         """Register a bot to the demos channel for display"""
-        print(member, bot)
+        if not await self._verify_input(inter, member, bot):
+            return
+        await inter.response.defer()
+        records = await crud.get_demo_channel(self.bot.pool, inter.guild)
 
-    @demo_bot_setup.autocomplete("bot")
-    async def bot_name_autocomplete(self,
-                                    inter: disnake.ApplicationCommandInteraction,
-                                    bot: disnake.Member) -> list[disnake.Member]:
+        user_registrations = []
+        for record in records:
+            # If the bot already has a channel, exit
+            if record.bot_id == bot.id:
+                await self.bot.inter_send(
+                    inter, panel=f"`{bot}` is already registered to {record.channel_obj.jump_url}",
+                    color=EmbedColor.WARNING
+                )
+                return
 
-        bots: list[disnake.Member] = []
-        for member in inter.guild.members:
-            if not member.bot:
-                continue
-            bots.append(member)
-        return bots
+            # If the user has a channel; keep count and inform the admin
+            if record.owner_id == member.id:
+                user_registrations.append(record)
+
+        if user_registrations:
+            await self.bot.inter_send(
+                inter, panel=f"User already has {len(user_registrations)} registrations. Add a view here",
+                color=EmbedColor.WARNING
+            )
+            return
+
+        await self.bot.inter_send(
+            inter, panel="Success", color=EmbedColor.SUCCESS,
+        )
+
+    async def _verify_input(self,
+                            inter: disnake.ApplicationCommandInteraction,
+                            member: disnake.Member,
+                            bot: disnake.Member) -> bool:
+        if member.bot:
+            await self.bot.inter_send(
+                inter,
+                panel="Member parameter must not be a bot",
+                color=EmbedColor.ERROR
+            )
+            return False
+
+        if not bot.bot:
+            await self.bot.inter_send(
+                inter,
+                panel="Bot parameter must be a bot",
+                color=EmbedColor.ERROR
+            )
+            return False
+
+        return True
 
 
 # @commands.command(name="setup", aliases=["set_up", ], hidden=True)
