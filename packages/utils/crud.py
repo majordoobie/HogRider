@@ -227,3 +227,13 @@ async def get_demo_channel_param(
 
     else:
         return None
+
+
+async def del_demo_channel(pool: Pool, param: disnake.Member | disnake.TextChannel) -> None:
+    if isinstance(param, disnake.TextChannel):
+        sql = "DELETE FROM demo_channel WHERE channel_id = $1"
+    else:
+        sql = "DELETE FROM demo_channel WHERE bot_id = $1"
+
+    async with pool.acquire() as conn:
+        await conn.execute(sql, param.id)
