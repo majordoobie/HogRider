@@ -5,6 +5,7 @@ def init_tables() -> list[str]:
         _table_create_user_message(),
         _table_create_thread_manager(),
         _table_create_bot_responses(),
+        _table_create_demo_channel(),
     ]
 
 

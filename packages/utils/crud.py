@@ -177,29 +177,53 @@ async def get_api_response_24h(pool: Pool) -> list[models.CoCEndPointStatus]:
 async def set_demo_channel(pool: Pool,
                            channel_id: int,
                            bot_id: int,
-                           owner_id) -> None:
+                           owner_id: int) -> None:
     sql = "INSERT INTO demo_channel (channel_id, bot_id, owner_id, creation_date) VALUES ($1, $2, $3, $4)"
     async with pool.acquire() as conn:
         await conn.execute(sql, channel_id, bot_id, owner_id, datetime.now())
 
 
 async def get_demo_channel(pool: Pool, guild: disnake.Guild) -> list[models.DemoChannel]:
-    sql = "SELECT * FROM bot_channel"
+    sql = "SELECT * FROM demo_channel"
 
     async with pool.acquire() as conn:
         records = await conn.fetch(sql)
 
     results = []
     for record in records:
-        member_obj = guild.get_member(record.owner_id)
-        bot_obj = guild.get_member(record.bot_id)
-        channel_obj = guild.get_channel(record.channel_id)
+        member_obj = guild.get_member(record.get("owner_id"))
+        bot_obj = guild.get_member(record.get("bot_id"))
+        channel_obj = guild.get_channel(record.get("channel_id"))
 
         results.append(models.DemoChannel(
-            **record.__dict__,
+            **record,
             member_obj=member_obj,
             bot_obj=bot_obj,
             channel_obj=channel_obj
         ))
 
     return results
+
+
+async def get_demo_channel_param(
+        pool: Pool,
+        guild: disnake.Guild,
+        param: disnake.Member | disnake.TextChannel) -> models.DemoChannel | None:
+    sql = "SELECT * FROM demo_channel WHERE channel_id = $1 or owner_id = $1 or bot_id = $1"
+    async with pool.acquire() as conn:
+        record = await conn.fetchrow(sql, param.id)
+
+    if record:
+        member_obj = guild.get_member(record.get("owner_id"))
+        bot_obj = guild.get_member(record.get("bot_id"))
+        channel_obj = guild.get_channel(record.get("channel_id"))
+
+        return models.DemoChannel(
+            **record,
+            member_obj=member_obj,
+            bot_obj=bot_obj,
+            channel_obj=channel_obj
+        )
+
+    else:
+        return None

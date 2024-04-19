@@ -117,6 +117,7 @@ class Settings:
         else:
             return [
                 "admin",
+                "demo_bots",
             ]
 
     @property
