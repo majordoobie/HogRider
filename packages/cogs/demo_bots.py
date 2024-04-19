@@ -229,7 +229,8 @@ def _make_payload(records: list[models.DemoChannel]) -> str:
     for count, record in enumerate(records):
         payload += (
             f"{record.channel_obj.jump_url if record.channel_obj else 'No Channel Found'}\n"
-            f"`{'Owner':>6}`: {record.member_present} {record.member_obj}\n"
-            f"`{'Bot':>6}`: {record.bot_present} {record.bot_obj}\n\n"
+            f"`{'Owner':>6}`: {record.member_present} {record.member_obj.mention}\n"
+            f"`{'Bot':>6}:` {record.bot_present} {record.bot_obj.mention}\n"
+            f"`{'Added':>6}:` {record.creation_date.strftime('%Y%m%d %H:%M')}\n\n"
         )
     return payload
