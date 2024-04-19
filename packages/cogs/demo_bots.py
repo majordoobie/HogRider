@@ -141,10 +141,10 @@ class DemoBot(commands.Cog):
             if record.owner_id == owner.id:
                 user_registrations.append(record)
 
-        # TODO: Figure out how to handle this situation
         if user_registrations:
             await self.bot.inter_send(
-                inter, panel=f"User already has {len(user_registrations)} registrations. Add a view here",
+                inter, panel=f"User already has {len(user_registrations)} registrations. If "
+                             f"we run into this, then have doobie add a feature for it.",
                 color=EmbedColor.WARNING
             )
             return
