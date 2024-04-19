@@ -112,6 +112,7 @@ class Settings:
                 "language_board",
                 "welcome",
                 "response",
+                "demo_bots",
             ]
 
         else:
