@@ -36,8 +36,8 @@ class General(commands.Cog):
         )
 
     @commands.slash_command(guild_ids=guild_ids())
-    async def refresh_interval(self,
-                               inter: disnake.ApplicationCommandInteraction):
+    async def cache_times(self,
+                          inter: disnake.ApplicationCommandInteraction):
         """
         Responds with the max age of the information for each endpoint in the
         Clash API

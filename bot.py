@@ -8,7 +8,7 @@ from disnake.ext import commands
 from disnake import Forbidden, MessageInteraction
 from disnake.ui import Item
 
-from packages.config import Settings
+from packages.config import Settings, BotMode
 from packages.utils.utils import EmbedColor
 from packages.views.welcome_views import WelcomeView
 
@@ -98,7 +98,6 @@ class BotClient(commands.Bot):
 
         name = f"{inter.author.name}"
         msg = (
-            f"**Command Log:**\n\n"
             f"`{'User:':<{space}}` {name}\n"
             f"`{'Command:':<{space}}` {inter.data.name}\n"
         )
@@ -114,6 +113,19 @@ class BotClient(commands.Bot):
                 msg += f"`{option:<{space}}` {data}\n"
 
         self.log.warning(f"{msg}")
+
+        if self.settings.mode == BotMode.LIVE_MODE:
+            channel = self.get_channel(self.settings.get_channel("mod-log"))
+            embeds = await self.inter_send(
+                inter,
+                panel=msg,
+                title="Command Log",
+                author=inter.author,
+                color=EmbedColor.WARNING,
+                return_embed=True,
+                flatten_list=True
+            )
+            await channel.send(embed=embeds[0])
 
     async def on_error(self, event, *args, **kwargs):
         self.log.error(traceback.format_exc())

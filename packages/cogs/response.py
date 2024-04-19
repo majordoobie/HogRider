@@ -34,7 +34,7 @@ class Response(commands.Cog):
             self.response_update.start()
             self.server_display_update.start()
 
-    @tasks.loop(minutes=5)
+    @tasks.loop(minutes=10)
     async def server_display_update(self):
         records = await crud.get_api_response(self.bot.pool)
         self.log.debug(f"Response update: Player: {records.player_resp}ms "
@@ -53,7 +53,7 @@ class Response(commands.Cog):
             channel_name = " ".join(key_name.split("_")).title()
             await channel.edit(name=f"{channel_name}: {records.__dict__.get(key_name)}ms")
 
-    @tasks.loop(minutes=5)
+    @tasks.loop(minutes=10)
     async def response_update(self) -> None:
         loop = asyncio.get_event_loop()
         player_resp, clan_resp, war_resp = await loop.run_in_executor(
