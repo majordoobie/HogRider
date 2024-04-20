@@ -37,8 +37,6 @@ class Response(commands.Cog):
     @tasks.loop(minutes=10)
     async def server_display_update(self):
         records = await crud.get_api_response(self.bot.pool)
-        self.log.debug(f"Response update: Player: {records.player_resp}ms "
-                       f"Clan: {records.clan_resp}ms War: {records.war_resp}ms")
 
         channel = self.bot.get_channel(self.bot.settings.get_channel("resp_update"))
         if channel is not None:
