@@ -49,11 +49,12 @@ class LanguageBoard(commands.Cog):
                 }
         """
         # Local constants
-        developer_role = "Developer"
         no_roles = "No Roles"
         languages = await crud.get_languages(self.bot.pool)
         include = [language.role_name for language in languages]
-        include.append(developer_role)
+        include.append("Developer")
+        include.append("Demo Owner")
+        include.append("Demo Bot")
 
         # Object that is returned
         role_stats = {
@@ -66,7 +67,7 @@ class LanguageBoard(commands.Cog):
             member: disnake.Member
 
             # If user only has @everyone role, consider them as having no roles
-            if len(member.roles) == 1:
+            if len(member.roles) == 1 and member.bot is False:
                 role_stats[no_roles] += 1
                 continue
 
