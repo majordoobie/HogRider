@@ -81,7 +81,12 @@ class DemoBot(commands.Cog):
             # TODO: Remove after done building the app
             pass
 
-        # 3) Update the db
+        # 3) Remove role
+        if record.member_obj:
+            demo_owner = inter.guild.get_role(self.bot.settings.get_role("demo_owner"))
+            await record.member_obj.remove_roles(demo_owner)
+
+        # 4) Update the db
         param = record.bot_obj if record.bot_obj else record.channel_obj
         await crud.del_demo_channel(self.bot.pool, param)
 
@@ -96,7 +101,6 @@ class DemoBot(commands.Cog):
                                           return_embed=True)
         await msg.edit(content=None, view=None, embed=panel[0][0])
 
-    @commands.check(is_admin)
     @commands.slash_command(guild_ids=guild_ids())
     async def demo_bot_list(self,
                             inter: disnake.ApplicationCommandInteraction) -> None:
@@ -173,10 +177,7 @@ class DemoBot(commands.Cog):
             overwrites=overwrites
         )
 
-        await channel.edit(position=position)
-
         mod_log = self.bot.get_channel(self.bot.settings.get_channel("mod-log"))
-
         await self.bot.inter_send(
             mod_log,
             panel=f"Created {channel.jump_url} for {owner.mention} to demo their bot {bot.mention}",
@@ -189,6 +190,13 @@ class DemoBot(commands.Cog):
         )
 
         await crud.set_demo_channel(self.bot.pool, channel.id, bot.id, owner.id)
+
+        # Add roles
+        demo_bot_role = inter.guild.get_role(self.bot.settings.get_role("demo_bot"))
+        demo_owner_role = inter.guild.get_role(self.bot.settings.get_role("demo_owner"))
+        await bot.add_roles(demo_bot_role)
+        await owner.add_roles(demo_owner_role)
+        await channel.send(f"Hey {owner.mention}, use this channel to show off your bot!")
 
     async def _verify_input(self,
                             inter: disnake.ApplicationCommandInteraction,
