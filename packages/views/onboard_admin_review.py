@@ -21,7 +21,7 @@ class AdminReviewView(BaseView):
                  introduction: str,
                  langs: list[models.Language] | None,
                  other_languages: str,
-                 primary_lang: models.Language) -> None:
+                 primary_lang: models.Language | None) -> None:
         super().__init__(bot, timeout=None)
         self.cls_name = self.__class__.__name__
         self.bot = bot
@@ -72,10 +72,12 @@ class AdminReviewView(BaseView):
         await self.member.add_roles(*roles, atomic=True)
 
         old_name = self.member.nick if self.member.nick else self.member.name
-        try:
-            await self.member.edit(nick=f"{old_name} | {self.primary_lang.role_name}")
-        except disnake.HTTPException:
-            self.log.critical(f"Could not edit `{self.member}` name due to length")
+
+        if self.primary_lang:
+            try:
+                await self.member.edit(nick=f"{old_name} | {self.primary_lang.role_name}")
+            except disnake.HTTPException:
+                self.log.critical(f"Could not edit `{self.member}` name due to length")
 
         self.log.error(f"Enrolling {self.member}\nNew Name: `{self.member.nick}`\n"
                        f"New Roles: `{', '.join(i.role_name for i in self.langs)}`")

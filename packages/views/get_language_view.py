@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import disnake
 
-from packages.utils import models, utils
+from packages.utils import models
 
 if TYPE_CHECKING:
     from bot import BotClient
