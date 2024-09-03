@@ -45,6 +45,10 @@ class OnboardMgr:
         # Determine the languages that the user knows
         msg, langs = await self._get_languages(modal)
 
+        # if langs is None, then the user was kicked for not answering the lang question
+        if langs is None:
+            return
+
         # Determine the primary language
         primary_lang = await self._get_primary_lang(msg, langs, modal)
 
