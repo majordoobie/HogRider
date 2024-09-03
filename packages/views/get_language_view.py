@@ -70,15 +70,17 @@ class LanguageSelector(disnake.ui.StringSelect):
         # Populate roles to add
         for value in sel_values:
             lang = self.langs.get(int(value))
-            lang.present = True
-            add_roles.append(lang)
+            if lang is not None:
+                lang.present = True
+                add_roles.append(lang)
 
         # Populate roles to remove
         for value in previous_selected:
             if str(value) not in sel_values:
                 lang = self.langs.get(value)
-                lang.present = False
-                rm_roles.append(lang)
+                if lang is not None:
+                    lang.present = False
+                    rm_roles.append(lang)
 
         return add_roles, rm_roles
 
