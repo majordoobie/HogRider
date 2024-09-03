@@ -41,9 +41,9 @@ class Settings:
     bot_prefix: str = field(init=False)
 
     # Logging
+    web_log_name: str = field(init=False)
+    web_log_url: str = field(init=False)
     main_log_level: int = logging.DEBUG
-    web_log_url: str = environ.get("WEB_LOG", "null")
-    web_log_name: str = "HogRider WebHook"
     logging_format: str = (
         "[%(asctime)s]:[%(levelname)s]:[%(name)s]:[Line:%(lineno)d][Func:%(funcName)s]\n"
         "[Path:%(pathname)s]\n"
@@ -51,7 +51,7 @@ class Settings:
     )
 
     def __post_init__(self):
-        # Add the IDs for slash commands this will disable their
+        # Add the IDs for slash commands this will disable theirconfig
         # "global command" status for faster refresh
 
         self.db_name = environ.get("POSTGRES_DB", "null")
@@ -78,6 +78,8 @@ class Settings:
             self.bot_token = environ.get("TOKEN_LIVE")
 
             self.log_name = "HogRider"
+            self.web_log_name: str = "HogRider WebHook"
+            self.web_log_url: str = environ.get("WEB_LOG_LIVE", "null")
 
         else:
             # version
@@ -97,6 +99,8 @@ class Settings:
             self.bot_token = environ.get("TOKEN_DEV")
 
             self.log_name = "DevShell"
+            self.web_log_name: str = f"HogRider WebHook BETA_{VERSION}"
+            self.web_log_url: str = environ.get("WEB_LOG_DEV", "null")
 
     @property
     def dsn(self) -> str:
