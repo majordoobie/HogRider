@@ -97,8 +97,10 @@ class BotClient(commands.Bot):
             space = 9  # Length of the 'Command: ' key
 
         name = f"{inter.author.name}"
+        source = inter.channel.jump_url if isinstance(inter.channel, disnake.TextChannel) else inter.channel.id
         msg = (
             f"`{'User:':<{space}}` {name}\n"
+            f"`{'Source:':<{space}}` {source}\n"
             f"`{'Command:':<{space}}` {inter.data.name}\n"
         )
 
