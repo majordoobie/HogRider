@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 import io
 
 import asyncpg
+import aiohttp
 import disnake
-import requests
 from disnake.ext import commands, tasks
 import pandas as pd
 from matplotlib.ticker import NullFormatter
@@ -53,11 +53,9 @@ class Response(commands.Cog):
 
     @tasks.loop(minutes=10)
     async def response_update(self) -> None:
-        loop = asyncio.get_event_loop()
-        player_resp, clan_resp, war_resp = await loop.run_in_executor(
-            None, self.get_response_times)
-
-        await crud.set_api_response(self.bot.pool, player_resp, clan_resp, war_resp)
+        response_times = await self.get_response_times()
+        if -1 not in response_times:
+            await crud.set_api_response(self.bot.pool, *response_times)
 
     @server_display_update.before_loop
     @response_update.before_loop
@@ -68,36 +66,41 @@ class Response(commands.Cog):
         self.response_update.cancel()
         self.server_display_update.cancel()
 
-    def get_response_times(self) -> list[int]:
-        """
-        In a new thread, perform the get requests sequentially to get their execution
-        time. The time is what is going to be logged.
+    async def get_response_times(self) -> list[int]:
+        """Cycle through all the endpoints to fetch their response times"""
+        tasks = [self.get_response_time(url, next(self.bot.coc_client.http.keys), self.log) for url in END_POINTS]
+        return await asyncio.gather(*tasks)
 
-        Returns
-        -------
-        list: List in the order of END_POINTS
-        """
+    @staticmethod
+    async def get_response_time(url: str, auth_token: str, log: logging.Logger) -> int:
         header = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "authorization": "Bearer {}".format(next(self.bot.coc_client.http.keys)),
+            "authorization": "Bearer {}".format(auth_token),
         }
 
-        response_times = [-1, -1, -1]
+        start = time.perf_counter_ns()
+        stop = -1
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{BASE}{url}", headers=header) as resp:
+                    if resp.status == 503:
+                        log.warn("Cannot retrieve API response times due to maintenance")
 
-        for index, url in enumerate(END_POINTS):
-            start = time.perf_counter_ns()
-            try:
-                requests.get(url=f"{BASE}{url}", headers=header)
-            except Exception as e:
-                self.log.error(f"Error trying to get {BASE}{url}: {e}")
-                continue
+                    elif resp.status != 200:
+                        log.error(f"Error trying to get {BASE}{url}: {await resp.text()}")
 
+                    else: # status == 200
+                        stop = time.perf_counter_ns()
+
+        except Exception as e: 
+           log.error(f"Error trying to get {BASE}{url}: {e}")
+
+        if stop != -1:
             # Convert nanoseconds to milliseconds
-            stop = time.perf_counter_ns()
-            response_times[index] = int((stop - start) / 1_000_000)
+            stop = int((stop - start) / 1_000_000)
+        return stop
 
-        return response_times
 
     @commands.slash_command(guild_ids=guild_ids())
     async def response_times(self,
@@ -106,8 +109,32 @@ class Response(commands.Cog):
         await inter.response.defer()
         records = await crud.get_api_response_24h(self.bot.pool)
 
+        if len(records) == 0:
+            response_times = await self.get_response_times()
+            self.log.error("Did not get any columns for resonse_times")
+
+            panel = ("Sorry, not enough historical data to show graph. Here is the current response times:\n"
+                     f"`Player:`{response_times[0]}\n"
+                     f"`Clan:`{response_times[1]}\n"
+                     f"`War:`{response_times[2]}\n")
+            await self.bot.inter_send(inter, panel=panel)
+            return
+
         columns = [key for key in records[0].__dict__.keys()]
         df = pd.DataFrame(records, columns=columns)
+
+        # Calculate Q1 and Q3 for each column (excluding 'check_time')
+        Q1 = df[['clan_resp', 'player_resp', 'war_resp']].quantile(0.25)
+        Q3 = df[['clan_resp', 'player_resp', 'war_resp']].quantile(0.75)
+
+        # Calculate the IQR
+        IQR = Q3 - Q1
+
+        # Create a mask for filtering outliers
+        mask = ~((df[['clan_resp', 'player_resp', 'war_resp']] < (Q1 - 1.5 * IQR)) | (df[['clan_resp', 'player_resp', 'war_resp']] > (Q3 + 1.5 * IQR))).any(axis=1)
+
+        # Filter the DataFrame using the mask
+        df = df[mask].reset_index(drop=True)
 
         """The following code was graciously provided by @lukasthaler"""
         # generate plot
