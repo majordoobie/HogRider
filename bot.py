@@ -24,6 +24,7 @@ DESCRIPTION = (
 class ViewErr(disnake.ui.View):
     async def on_error(self, error: Exception, item: Item,
                        interaction: MessageInteraction) -> None:
+        pass
 
 
 class BotClient(commands.Bot):
