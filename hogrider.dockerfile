@@ -14,7 +14,7 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy
 
-COPY pyproject.toml uv.lock .python-version ${WORKDIR}/
+COPY pyproject.toml uv.lock ${WORKDIR}/
 RUN uv sync --locked --no-install-project
 
 # This "enables" the venv by adding it to ${PATH}
