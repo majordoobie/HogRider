@@ -85,7 +85,7 @@ class Response(commands.Cog):
             async with aiohttp.ClientSession() as session:
                 async with session.get(f"{BASE}{url}", headers=header) as resp:
                     if resp.status == 503:
-                        log.warn("Cannot retrieve API response times due to maintenance")
+                        log.warning("Cannot retrieve API response times due to maintenance")
 
                     elif resp.status != 200:
                         log.error(f"Error trying to get {BASE}{url}: {await resp.text()}")

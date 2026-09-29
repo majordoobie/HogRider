@@ -1,21 +1,20 @@
-version: "3.8"
 services:
   hogrider_db:
-    image: arm64v8/postgres
+    image: postgres:18
     container_name: hogrider_db
     env_file:
       - packages/config/HogRiderSecrets/db.env
     volumes:
-      - hogrider_volume:/var/lib/postgresql/data/
+      - hogrider_volume:/var/lib/postgresql
     ports:
-      - 5444:5432
+      - 127.0.0.1:5444:5432
     networks:
       - hogrider_network
     restart: always
 
   hogrider:
     container_name: hogrider
-    image: hogrider:v1.0
+    image: hogrider:v2.0
     depends_on:
       - hogrider_db
     build:

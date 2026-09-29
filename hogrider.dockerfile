@@ -1,19 +1,24 @@
-FROM arm64v8/python:3.11-bookworm
+FROM python:3.14-slim
 
 # Do not buffer stdout/stderr just dump it asap
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONUNBUFFERED=1
 
 ARG WORKDIR=/opt/code
 WORKDIR ${WORKDIR}
 
-# This "enables" venv by adding the venv path to ${PATH}
-# https://stackoverflow.com/questions/48561981/activate-python-virtualenv-in-dockerfile
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:${PATH}"
+# Install dependencies with uv into /opt/venv. The venv lives outside of
+# ${WORKDIR} because docker-compose bind-mounts the repo over ${WORKDIR}.
+COPY --from=ghcr.io/astral-sh/uv:0.12 /uv /bin/uv
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
 
-COPY ./requirements.txt ${WORKDIR}/requirements.txt
-RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml uv.lock .python-version ${WORKDIR}/
+RUN uv sync --locked --no-install-project
+
+# This "enables" the venv by adding it to ${PATH}
+ENV PATH="/opt/venv/bin:${PATH}"
 RUN echo 'alias ll="ls -lart --color=auto"' >> ~/.bashrc
 
 # Entry point of dev null used for debugging

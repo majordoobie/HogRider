@@ -1,0 +1,17 @@
+[project]
+name = "hogrider"
+version = "2.3.4"
+description = "Administration bot for the Clash of Clans API developer Discord server"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "aiohttp>=3.14.3",
+    "asyncpg>=0.31.0",
+    "coc-py>=4.0.0",
+    "disnake>=2.12.1",
+    "matplotlib>=3.11.2",
+    "pandas>=3.0.6",
+]
+
+[tool.uv]
+package = false
