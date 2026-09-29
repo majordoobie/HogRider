@@ -26,10 +26,7 @@ services:
       - .:/opt/code
     networks:
       - hogrider_network
-    deploy:
-      restart_policy:
-        condition: on-failure
-        max_attempts: 5
+    restart: unless-stopped
 
 volumes:
   hogrider_volume:
