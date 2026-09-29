@@ -11,6 +11,7 @@ dependencies = [
     "disnake>=2.12.1",
     "matplotlib>=3.11.2",
     "pandas>=3.0.6",
+    "requests>=2.34.2",
 ]
 
 [tool.uv]
